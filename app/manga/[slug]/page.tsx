@@ -4,16 +4,18 @@ import ChapterList from "../../../components/ChapterList";
 import Navbar from "../../../components/Navbar";
 import BookmarkButton from "../../../components/BookmarkButton";
 
+export const revalidate = 300;
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   try {
     const d = await detail(slug);
     return {
-      title: `${d.title} – KomikZone`,
-      description: d.description?.slice(0, 155) || `Baca ${d.title} Sub Indo di KomikZone`,
+      title: `${d.title} – Oniforge`,
+      description: d.description?.slice(0, 155) || `Baca ${d.title} Sub Indo di Oniforge`,
     };
   } catch {
-    return { title: "Detail Komik – KomikZone" };
+    return { title: "Detail Komik – Oniforge" };
   }
 }
 
@@ -116,7 +118,7 @@ export default async function MangaPage({ params }: { params: Promise<{ slug: st
           <div className="section-header">
             <h2>📖 Daftar Chapter ({chapters.length})</h2>
           </div>
-          <ChapterList slug={slug} chapters={chapters} />
+          <ChapterList slug={slug} chapters={chapters} mangaTitle={d.title} mangaCover={d.image || d.thumbnail || ""} />
         </section>
       </main>
     </>

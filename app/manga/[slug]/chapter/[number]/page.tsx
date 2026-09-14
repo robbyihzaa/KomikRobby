@@ -9,8 +9,8 @@ export async function generateMetadata({
 }) {
   const { slug, number } = await params;
   return {
-    title: `Chapter ${number} – ${slug.replace(/-/g, " ")} – KomikZone`,
-    description: `Baca Manga / Manhwa Chapter ${number} Sub Indo online gratis di KomikZone.`,
+    title: `Chapter ${number} – ${slug.replace(/-/g, " ")} – Oniforge`,
+    description: `Baca Manga / Manhwa Chapter ${number} Sub Indo online gratis di Oniforge.`,
   };
 }
 

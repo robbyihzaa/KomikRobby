@@ -20,7 +20,23 @@ interface CacheEntry {
 }
 
 const htmlCache = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache for instant 0ms page loads
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes HTML cache
+
+const resultCache = new Map<string, { data: any; timestamp: number }>();
+
+function getCachedData(key: string, ttlMs: number) {
+  const item = resultCache.get(key);
+  if (item && Date.now() - item.timestamp < ttlMs) {
+    return item.data;
+  }
+  return null;
+}
+
+function setCachedData(key: string, data: any) {
+  if (data && (!Array.isArray(data) || data.length > 0)) {
+    resultCache.set(key, { data, timestamp: Date.now() });
+  }
+}
 
 export async function fetchHtml(url: string) {
   const now = Date.now();
@@ -35,39 +51,36 @@ export async function fetchHtml(url: string) {
   if (url.startsWith(BASE)) {
     const path = url.slice(BASE.length);
     candidateUrls.push(`https://komikindo.tv${path}`);
+    candidateUrls.push(`https://komikindo.org${path}`);
   } else if (url.startsWith("https://manhwadesu.org")) {
     const path = url.slice("https://manhwadesu.org".length);
     candidateUrls.push(`https://manhwadesu.wiki${path}`);
   }
 
-  let lastError: any = null;
+  // Race candidates in parallel for sub-second fast response
+  const fetchSingle = async (targetUrl: string) => {
+    const r = await fetch(targetUrl, {
+      headers: HEADERS,
+      cache: "no-store",
+      signal: AbortSignal.timeout(3500), // 3.5s fast timeout per mirror
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const text = await r.text();
+    if (!text || text.length < 300) throw new Error("Empty response");
+    return text;
+  };
 
-  for (const targetUrl of candidateUrls) {
-    try {
-      const r = await fetch(targetUrl, {
-        headers: HEADERS,
-        cache: "no-store",
-        signal: AbortSignal.timeout(6000), // 6s fast timeout per attempt
-      });
-
-      if (r.ok) {
-        const text = await r.text();
-        if (text && text.length > 300) {
-          htmlCache.set(url, { html: text, timestamp: now });
-          return text;
-        }
-      }
-    } catch (err) {
-      lastError = err;
+  try {
+    const html = await Promise.any(candidateUrls.map((u) => fetchSingle(u)));
+    htmlCache.set(url, { html, timestamp: now });
+    return html;
+  } catch {
+    // Return stale cache if live requests failed
+    if (cached && cached.html) {
+      return cached.html;
     }
+    throw new Error(`Gagal memuat sumber dari semua mirror.`);
   }
-
-  // Return stale cache if live requests timed out or failed
-  if (cached && cached.html) {
-    return cached.html;
-  }
-
-  throw lastError || new Error(`Gagal memuat sumber dari semua mirror.`);
 }
 
 /**
@@ -246,24 +259,38 @@ export const komiku = {
    * Latest comics sorted by update date (newest first).
    * Uses /komik-terbaru/ which is the site's official "recently updated" list.
    */
+  /**
+   * Latest comics sorted by update date (newest first).
+   * Uses /komik-terbaru/ which is the site's official "recently updated" list.
+   */
   latest: async (page = 1) => {
+    const cacheKey = `latest:${page}`;
+    const cached = getCachedData(cacheKey, 3 * 60 * 1000);
+    if (cached) return cached;
+
     // Stage 1: komikindo.ch (primary)
     try {
       const url = `${BASE}/komik-terbaru/page/${page}/`;
       const html = await fetchHtml(url);
       const items = parseCardsFromHtml(html);
-      if (items.length > 0) return items;
+      if (items.length > 0) {
+        setCachedData(cacheKey, items);
+        return items;
+      }
     } catch (e) {
       console.error("komiku.latest primary failed:", e);
     }
-    // Stage 2: komiku.id (cloud-friendly fallback, no Cloudflare block)
+    // Stage 2: api.komiku.org (cloud-friendly fallback, no Cloudflare block)
     try {
       const url = page === 1
-        ? `https://komiku.id/daftar-komik/?orderby=date&status=`
-        : `https://komiku.id/daftar-komik/page/${page}/?orderby=date&status=`;
+        ? `https://api.komiku.org/?post_type=manga&orderby=date`
+        : `https://api.komiku.org/page/${page}/?post_type=manga&orderby=date`;
       const html = await fetchHtml(url);
       const items = parseKomikuCards(html);
-      if (items.length > 0) return items;
+      if (items.length > 0) {
+        setCachedData(cacheKey, items);
+        return items;
+      }
     } catch (e) {}
     return [];
   },
@@ -272,6 +299,10 @@ export const komiku = {
    * Popular comics sorted by all-time views (prioritizing popular Manhwa).
    */
   popular: async (page = 1) => {
+    const cacheKey = `popular:${page}`;
+    const cached = getCachedData(cacheKey, 5 * 60 * 1000);
+    if (cached) return cached;
+
     // Stage 1: komikindo.ch popular Manhwa (primary)
     try {
       const url = page === 1
@@ -279,7 +310,10 @@ export const komiku = {
         : `${BASE}/daftar-manga/page/${page}/?type=Manhwa&order=popular`;
       const html = await fetchHtml(url);
       const items = parseCardsFromHtml(html);
-      if (items.length > 0) return items;
+      if (items.length > 0) {
+        setCachedData(cacheKey, items);
+        return items;
+      }
     } catch (e) {
       console.error("komiku.popular primary failed:", e);
     }
@@ -290,19 +324,28 @@ export const komiku = {
         : `${BASE}/manga/page/${page}/?orderby=popular`;
       const html = await fetchHtml(url);
       const items = parseCardsFromHtml(html);
-      if (items.length > 0) return items;
+      if (items.length > 0) {
+        setCachedData(cacheKey, items);
+        return items;
+      }
     } catch (e) {}
-    // Stage 3: komiku.id popular Manhwa (cloud-friendly fallback)
+    // Stage 3: api.komiku.org popular Manhwa (cloud-friendly fallback)
     try {
-      const html = await fetchHtml(`https://komiku.id/daftar-komik/?tipe=manhwa&orderby=meta_value_num`);
+      const html = await fetchHtml(`https://api.komiku.org/?post_type=manga&tipe=manhwa`);
       const items = parseKomikuCards(html);
-      if (items.length > 0) return items;
+      if (items.length > 0) {
+        setCachedData(cacheKey, items);
+        return items;
+      }
     } catch (e) {}
-    // Stage 4: komiku.id general popular fallback
+    // Stage 4: api.komiku.org general popular fallback
     try {
-      const html = await fetchHtml(`https://komiku.id/`);
+      const html = await fetchHtml(`https://api.komiku.org/?post_type=manga&orderby=meta_value_num`);
       const items = parseKomikuCards(html);
-      if (items.length > 0) return items;
+      if (items.length > 0) {
+        setCachedData(cacheKey, items);
+        return items;
+      }
     } catch (e) {}
     return [];
   },
@@ -355,9 +398,10 @@ export const komiku = {
       console.error("komiku.filter primary error:", err);
     }
 
-    // Stage 2: komiku.id fallback (100% cloud-friendly, no Cloudflare block)
+    // Stage 2: api.komiku.org fallback (100% cloud-friendly, no Cloudflare block)
     try {
       const qs2 = new URLSearchParams();
+      qs2.set("post_type", "manga");
       if (params.type) qs2.set("tipe", params.type.toLowerCase());
       if (params.orderby === "popular" || !params.orderby) qs2.set("orderby", "meta_value_num");
       else if (params.orderby === "update") qs2.set("orderby", "date");
@@ -365,7 +409,7 @@ export const komiku = {
       if (params.genre) qs2.set("genre", params.genre.toLowerCase());
       if (params.page && params.page > 1) qs2.set("page", params.page.toString());
 
-      const url2 = `https://komiku.id/daftar-komik/?${qs2.toString()}`;
+      const url2 = `https://api.komiku.org/?${qs2.toString()}`;
       const html2 = await fetchHtml(url2);
       const items2 = parseKomikuCards(html2);
       if (items2.length > 0) return items2;
@@ -375,12 +419,6 @@ export const komiku = {
 
     return [];
   },
-
-
-
-
-
-
 
   library: async (page = 1) => komiku.latest(page),
   colored: async (page = 1) => komiku.latest(page),
@@ -398,9 +436,9 @@ export const komiku = {
     } catch (err) {
       console.error("komiku.search primary error:", err);
     }
-    // Stage 2: komiku.id fallback (100% cloud-friendly, no Cloudflare block)
+    // Stage 2: api.komiku.org fallback (100% cloud-friendly, no Cloudflare block)
     try {
-      const url2 = `https://komiku.id/daftar-komik/?s=${encodeURIComponent(q)}`;
+      const url2 = `https://api.komiku.org/?post_type=manga&s=${encodeURIComponent(q)}`;
       const html2 = await fetchHtml(url2);
       const items2 = parseKomikuCards(html2);
       if (items2.length > 0) return items2;
@@ -412,6 +450,10 @@ export const komiku = {
 
   detail: async (slug: string) => {
     const cleanSlug = decodeURIComponent(slug).replace(/^\/detail-komik\//, "").replace(/\/$/, "");
+    const cacheKey = `detail:${cleanSlug}`;
+    const cached = getCachedData(cacheKey, 10 * 60 * 1000);
+    if (cached) return cached;
+
     let html = "";
 
     // Stage 1: Primary provider (komikindo.ch)
@@ -421,12 +463,30 @@ export const komiku = {
       console.error("komiku.detail komikindo.ch failed, trying komiku.id:", err);
     }
 
-    // Stage 2: Cloud-friendly fallback (komiku.id - no Cloudflare block on Vercel/AWS)
+    // Stage 2: Cloud-friendly fallback (komiku.id)
     if (!html) {
       try {
-        html = await fetchHtml(`https://komiku.id/manga/${cleanSlug}/`);
+        const text = await fetchHtml(`https://komiku.id/manga/${cleanSlug}/`);
+        if (text && text.length > 5000 && !text.includes("404")) {
+          html = text;
+        }
       } catch (err2) {
-        console.error("komiku.detail komiku.id failed, trying manhwadesu.wiki:", err2);
+        console.error("komiku.detail komiku.id direct slug failed:", err2);
+      }
+    }
+
+    // Stage 3: Auto-slug search fallback (find real slug on komiku.id if slug differs)
+    if (!html) {
+      try {
+        const query = cleanSlug.replace(/-/g, " ");
+        const searchHtml = await fetchHtml(`https://api.komiku.org/?post_type=manga&s=${encodeURIComponent(query)}`);
+        const cards = parseKomikuCards(searchHtml);
+        if (cards.length > 0 && cards[0].slug) {
+          const actualSlug = cards[0].slug;
+          html = await fetchHtml(`https://komiku.id/manga/${actualSlug}/`);
+        }
+      } catch (err3) {
+        console.error("komiku.detail auto-slug search fallback failed:", err3);
       }
     }
 
@@ -543,7 +603,7 @@ export const komiku = {
       }
     }
 
-    return {
+    const detailResult = {
       title,
       image,
       thumbnail: image,
@@ -556,11 +616,16 @@ export const komiku = {
       chapters,
       chapter_list: chapters,
     };
+    setCachedData(cacheKey, detailResult);
+    return detailResult;
   },
 
   chapter: async (slug: string, number: string) => {
     const cleanSlug = decodeURIComponent(slug).replace(/^\/detail-komik\//, "").replace(/\/$/, "");
     const cleanNumber = decodeURIComponent(number);
+    const cacheKey = `chapter:${cleanSlug}:${cleanNumber}`;
+    const cached = getCachedData(cacheKey, 15 * 60 * 1000);
+    if (cached) return cached;
 
     let chUrl = "";
     try {
@@ -668,12 +733,14 @@ export const komiku = {
       );
     });
 
-    return {
+    const chapterResult = {
       chapter: cleanNumber,
       images,
       image: images,
       pages: images
     };
+    if (images.length > 0) setCachedData(cacheKey, chapterResult);
+    return chapterResult;
   }
 };
 

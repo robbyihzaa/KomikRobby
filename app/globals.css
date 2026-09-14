@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   KomikZone — Premium Dark UI Design System
+   Oniforge — Premium Dark UI Design System
    ═══════════════════════════════════════════════════════════ */
 
 /* ─── CSS Variables ─────────────────────────────────────── */
@@ -141,9 +141,12 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   flex-shrink: 0;
 }
 
-.logo-icon {
-  font-size: 20px;
-  -webkit-text-fill-color: initial;
+.logo-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .navbar-links {
@@ -2275,5 +2278,484 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     font-size: 13px;
     padding: 10px 12px;
     text-align: center;
+  }
+}
+
+/* ─── Download & Offline Feature ─────────────────────────── */
+
+/* Chapter row layout update (was <Link>, now <div> wrapping Link+Button) */
+.chapters .chapter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+}
+
+.chapter-link {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  transition: background var(--transition), color var(--transition);
+  text-decoration: none;
+  min-width: 0;
+}
+
+.chapter-link:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+/* Chapter list toolbar */
+.chapter-list-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.chapter-list-toolbar .chapter-search-box {
+  flex: 1;
+  min-width: 180px;
+}
+
+/* Download buttons */
+.dl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  transition: background var(--transition), opacity var(--transition);
+  cursor: pointer;
+  border: none;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.dl-btn-sm {
+  font-size: 12px;
+  padding: 5px 9px;
+}
+
+.dl-btn-download {
+  background: rgba(108, 99, 255, 0.15);
+  color: var(--accent-hover);
+  border: 1px solid rgba(108, 99, 255, 0.3);
+}
+.dl-btn-download:hover {
+  background: rgba(108, 99, 255, 0.28);
+}
+
+.dl-btn-danger {
+  background: rgba(255, 90, 110, 0.15);
+  color: #ff8fa0;
+  border: 1px solid rgba(255, 90, 110, 0.3);
+}
+.dl-btn-danger:hover {
+  background: rgba(255, 90, 110, 0.28);
+}
+
+.dl-btn-ghost {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+.dl-btn-ghost:hover {
+  background: var(--bg-card-hover);
+}
+
+.dl-btn-error {
+  background: rgba(255, 160, 60, 0.12);
+  color: #ffb97a;
+  border: 1px solid rgba(255, 160, 60, 0.3);
+  cursor: default;
+}
+
+.dl-btn-read {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  padding: 7px 14px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+.dl-btn-read:hover {
+  background: var(--bg-card-hover);
+}
+
+.dl-btn-read-sm {
+  background: rgba(108, 99, 255, 0.12);
+  color: var(--accent-hover);
+  border: 1px solid rgba(108, 99, 255, 0.25);
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  font-weight: 600;
+}
+.dl-btn-read-sm:hover {
+  background: rgba(108, 99, 255, 0.24);
+}
+
+.dl-download-all-btn {
+  background: rgba(108, 99, 255, 0.12);
+  color: var(--accent-hover);
+  border: 1px solid rgba(108, 99, 255, 0.25);
+  flex-shrink: 0;
+}
+.dl-download-all-btn:hover {
+  background: rgba(108, 99, 255, 0.22);
+}
+
+/* Progress bar */
+.dl-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 80px;
+  max-width: 110px;
+}
+
+.dl-progress-bar {
+  width: 100%;
+  height: 5px;
+  background: var(--bg-card-hover);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.dl-progress-bar-lg {
+  height: 8px;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.dl-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.dl-progress-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* Done state */
+.dl-done-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dl-done-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--read-fg);
+  background: var(--read-bg);
+  border: 1px solid var(--read-border);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+/* Confirm inline */
+.dl-confirm-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dl-confirm-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Offline badge in reader */
+.offline-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--read-fg);
+  background: var(--read-bg);
+  border: 1px solid var(--read-border);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  margin-left: 8px;
+}
+
+/* ─── Modal ──────────────────────────────────────────────── */
+.dl-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.dl-modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px 20px;
+  max-width: 380px;
+  width: 100%;
+  box-shadow: var(--shadow-card);
+  animation: modalIn 0.2s ease;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.dl-modal-title {
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 10px;
+  color: var(--text-primary);
+}
+
+.dl-modal-body {
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  color: var(--text-secondary);
+}
+
+.dl-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ─── Downloads Page ─────────────────────────────────────── */
+
+/* Storage card */
+.dl-storage-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.dl-storage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.dl-storage-title {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.dl-storage-sizes {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.dl-storage-bar {
+  width: 100%;
+  height: 10px;
+  background: var(--bg-card-hover);
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.dl-storage-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  border-radius: 5px;
+  transition: width 0.5s ease;
+}
+
+.dl-storage-fill-warn {
+  background: linear-gradient(90deg, #ff6584, #ff9b4e);
+}
+
+.dl-storage-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.dl-storage-warn {
+  margin-top: 10px;
+  background: rgba(255, 160, 60, 0.12);
+  border: 1px solid rgba(255, 160, 60, 0.3);
+  color: #ffb97a;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Manga list */
+.dl-manga-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dl-manga-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.dl-manga-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+}
+
+.dl-manga-cover-link {
+  flex-shrink: 0;
+}
+
+.dl-manga-cover {
+  width: 56px;
+  height: 72px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
+.dl-manga-cover-placeholder {
+  width: 56px;
+  height: 72px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.dl-manga-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dl-manga-title {
+  font-weight: 700;
+  font-size: 15px;
+  display: block;
+  color: var(--text-primary);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dl-manga-title:hover { color: var(--accent-hover); }
+
+.dl-manga-stats {
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.dl-manga-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.dl-toggle-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.dl-toggle-btn:hover { background: var(--bg-card-hover); }
+
+/* Chapter list within manga card */
+.dl-chapter-list {
+  border-top: 1px solid var(--border);
+  background: var(--bg-base);
+}
+
+.dl-chapter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+}
+
+.dl-chapter-row:last-child { border-bottom: none; }
+
+.dl-chapter-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dl-chapter-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dl-chapter-size {
+  font-size: 11px;
+}
+
+.dl-chapter-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ─── Responsive adjustments ─────────────────────────────── */
+@media (max-width: 480px) {
+  .dl-manga-row {
+    flex-wrap: wrap;
+  }
+  .dl-manga-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .chapter-list-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .dl-download-all-btn {
+    width: 100%;
+    justify-content: center;
   }
 }

@@ -15,7 +15,14 @@ interface Chapter {
   date?: string;
 }
 
-export default function ChapterList({ slug, chapters }: { slug: string; chapters: Chapter[] }) {
+interface Props {
+  slug: string;
+  chapters: Chapter[];
+  mangaTitle?: string;
+  mangaCover?: string;
+}
+
+export default function ChapterList({ slug, chapters }: Props) {
   const [readChapters, setReadChapters] = useState<string[]>([]);
   const [search, setSearch] = useState("");
 
@@ -37,28 +44,31 @@ export default function ChapterList({ slug, chapters }: { slug: string; chapters
 
   return (
     <div className="chapter-list-container">
+      {/* Search row */}
       {chapters.length > 8 && (
-        <div className="chapter-search-box">
-          <span className="search-icon">🔍</span>
-          <input
-            type="text"
-            className="chapter-search-input"
-            placeholder={`Cari dari ${chapters.length} chapter... (contoh: 50)`}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          {search && (
-            <button className="clear-search-btn" onClick={() => setSearch("")}>
-              ✕
-            </button>
-          )}
+        <div className="chapter-list-toolbar">
+          <div className="chapter-search-box">
+            <span className="search-icon">🔍</span>
+            <input
+              type="text"
+              className="chapter-search-input"
+              placeholder={`Cari dari ${chapters.length} chapter... (contoh: 50)`}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search && (
+              <button className="clear-search-btn" onClick={() => setSearch("")}>
+                ✕
+              </button>
+            )}
+          </div>
         </div>
       )}
 
       <div className="chapters">
         {filtered.length === 0 ? (
           <div className="muted" style={{ padding: "16px", textAlign: "center" }}>
-            Chapter "{search}" tidak ditemukan.
+            Chapter &quot;{search}&quot; tidak ditemukan.
           </div>
         ) : (
           filtered.map((c, i) => {
@@ -71,17 +81,18 @@ export default function ChapterList({ slug, chapters }: { slug: string; chapters
             const isRead = readChapters.includes(n) || readChapters.includes(ep);
 
             return (
-              <Link
-                className={`chapter ${isRead ? "chapter-read" : ""}`}
-                key={i}
-                href={`/manga/${slug}/chapter/${encodeURIComponent(n)}`}
-              >
-                <div className="chapter-info">
-                  <span className="chapter-title">{titleText}</span>
-                  {releaseDate && <span className="chapter-date">📅 {releaseDate}</span>}
-                </div>
-                {isRead && <span className="read-badge">✓ Dibaca</span>}
-              </Link>
+              <div className={`chapter ${isRead ? "chapter-read" : ""}`} key={i}>
+                <Link
+                  className="chapter-link"
+                  href={`/manga/${slug}/chapter/${encodeURIComponent(n)}`}
+                >
+                  <div className="chapter-info">
+                    <span className="chapter-title">{titleText}</span>
+                    {releaseDate && <span className="chapter-date">📅 {releaseDate}</span>}
+                  </div>
+                  {isRead && <span className="read-badge">✓ Dibaca</span>}
+                </Link>
+              </div>
             );
           })
         )}

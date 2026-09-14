@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 
-
 interface ChapterItem {
   number: string;
   endpoint?: string;
@@ -22,7 +21,6 @@ interface ChapterReaderProps {
   nextChapter?: ChapterItem | null;
   error?: string;
 }
-
 
 export default function ChapterReader({
   slug,
@@ -149,7 +147,6 @@ export default function ChapterReader({
           <Link href={`/manga/${slug}`} className="reader-back-btn reader-interactive">
             ← <span className="reader-back-text">Kembali</span>
           </Link>
-
           {/* Center: Chapter Jump Select */}
           <div className="reader-center-control reader-interactive">
             <select
@@ -159,8 +156,8 @@ export default function ChapterReader({
               aria-label="Pilih Chapter"
             >
               {chapters.length > 0 ? (
-                chapters.map((c) => (
-                  <option key={c.number} value={c.number}>
+                chapters.map((c, i) => (
+                  <option key={`${c.number}-${i}`} value={c.number}>
                     Chapter {c.number}
                   </option>
                 ))
@@ -262,8 +259,8 @@ export default function ChapterReader({
                 onChange={handleChapterChange}
                 aria-label="Lompat ke Chapter"
               >
-                {chapters.map((c) => (
-                  <option key={c.number} value={c.number}>
+                {chapters.map((c, i) => (
+                  <option key={`${c.number}-${i}`} value={c.number}>
                     Lompat ke Chapter {c.number}
                   </option>
                 ))}
@@ -319,8 +316,8 @@ export default function ChapterReader({
             aria-label="Pilih Chapter"
           >
             {chapters.length > 0 ? (
-              chapters.map((c) => (
-                <option key={c.number} value={c.number}>
+              chapters.map((c, i) => (
+                <option key={`${c.number}-${i}`} value={c.number}>
                   Ch. {c.number}
                 </option>
               ))

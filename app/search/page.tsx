@@ -5,8 +5,8 @@ import FilterBar from "../../components/FilterBar";
 import { search, filter } from "../../lib/api";
 
 export const metadata = {
-  title: "Cari & Filter Komik – KomikZone",
-  description: "Cari judul komik dan filter Manhwa, Manga, Manhua berdasarkan Genre, Status, dan Urutan di KomikZone.",
+  title: "Cari & Filter Komik – Oniforge",
+  description: "Cari judul komik dan filter Manhwa, Manga, Manhua berdasarkan Genre, Status, dan Urutan di Oniforge.",
 };
 
 interface SearchPageProps {

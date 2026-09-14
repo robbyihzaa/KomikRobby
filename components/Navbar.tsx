@@ -27,8 +27,8 @@ export default function Navbar() {
       <header className={`navbar ${scrolled ? "navbar-scrolled" : ""}`}>
         <div className="navbar-inner">
           <Link href="/" className="navbar-logo">
-            <span className="logo-icon">⚡</span>
-            <span>KomikZone</span>
+            <img src="/logo.jpg" alt="Oniforge" className="logo-img" />
+            <span>Oniforge</span>
           </Link>
 
           {/* Desktop nav links */}

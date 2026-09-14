@@ -3,9 +3,11 @@ import { latest, popular } from "../lib/api";
 import MangaCard from "../components/MangaCard";
 import Navbar from "../components/Navbar";
 
+export const revalidate = 60;
+
 export const metadata = {
-  title: "KomikZone – Baca Manhwa & Manga Sub Indo Terbaru",
-  description: "Temukan ribuan Manhwa, Manga, dan Manhua Sub Indo terbaru dan terpopuler di KomikZone.",
+  title: "Oniforge – Baca Manhwa & Manga Sub Indo Terbaru",
+  description: "Temukan ribuan Manhwa, Manga, dan Manhua Sub Indo terbaru dan terpopuler di Oniforge.",
 };
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ page?: string; tab?: string }> }) {
@@ -68,13 +70,16 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
               Lihat Semua →
             </Link>
           </div>
-          {popularError ? (
-            <div className="error">Gagal memuat daftar populer.</div>
-          ) : popularData.length === 0 ? (
-            <div className="muted">Memuat...</div>
+          {popularError || popularData.length === 0 ? (
+            <div className="empty-state" style={{ padding: "20px", textAlign: "center" }}>
+              <p className="muted">Daftar populer sementara tidak dapat dimuat dari sumber mirror.</p>
+              <Link href="/browse?orderby=popular" className="btn btn-primary" style={{ marginTop: 8, fontSize: 13 }}>
+                🔄 Coba Jelajahi Komik
+              </Link>
+            </div>
           ) : (
             <div className="grid">
-              {popularData.map((x, i) => (
+              {popularData.map((x: any, i: number) => (
                 <MangaCard key={i} item={x} rank={i} />
               ))}
             </div>
@@ -92,13 +97,18 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
               Filter &amp; Urutkan →
             </Link>
           </div>
-          {latestError ? (
-            <div className="error">Gagal memuat daftar terbaru.</div>
-          ) : latestData.length === 0 ? (
-            <div className="muted">Memuat...</div>
+          {latestError || latestData.length === 0 ? (
+            <div className="empty-state" style={{ padding: "24px", textAlign: "center" }}>
+              <div className="empty-icon">🌐</div>
+              <h3>Gagal Memuat Komik Terbaru</h3>
+              <p className="muted" style={{ margin: "4px 0 12px" }}>Koneksi ke sumber komik lambat atau diblokir. Klik untuk memuat ulang.</p>
+              <Link href={`/?page=${page}`} className="btn btn-primary">
+                🔄 Coba Lagi
+              </Link>
+            </div>
           ) : (
             <div className="grid">
-              {latestData.map((x, i) => (
+              {latestData.map((x: any, i: number) => (
                 <MangaCard key={i} item={x} />
               ))}
             </div>

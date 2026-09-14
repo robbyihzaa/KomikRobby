@@ -1,8 +1,8 @@
 import SearchPage from "../search/page";
 
 export const metadata = {
-  title: "Cari & Filter Komik – KomikZone",
-  description: "Cari dan filter Manhwa, Manga, Manhua di KomikZone.",
+  title: "Cari & Filter Komik – Oniforge",
+  description: "Cari dan filter Manhwa, Manga, Manhua di Oniforge.",
 };
 
 interface BrowsePageProps {
