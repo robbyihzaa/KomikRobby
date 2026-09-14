@@ -1809,28 +1809,50 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   .bottom-nav { display: flex; }
   
   .page-with-nav {
-    padding-top: calc(var(--nav-height) + 28px);
-    padding-bottom: calc(var(--bottom-nav-height) + 28px);
+    padding-top: calc(var(--nav-height) + 42px) !important;
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 64px) !important;
   }
 
   .container {
-    padding: 0 12px;
+    padding: 0 14px;
   }
 
   .hero {
-    padding: 12px 0 16px;
-    margin-top: 8px;
+    padding: 8px 0 16px;
+    margin-top: 4px;
   }
 
   .hero h1 {
     font-size: 26px;
     letter-spacing: -0.8px;
-    line-height: 1.2;
+    line-height: 1.25;
   }
 
   .hero p {
     font-size: 13px;
     margin-top: 4px;
+  }
+
+  /* Detail page layout on mobile */
+  .detail {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-top: 6px;
+  }
+
+  .detail-cover-container {
+    width: 100%;
+    max-width: 180px;
+    margin: 0 auto;
+  }
+
+  .section {
+    margin-top: 24px;
+    margin-bottom: 36px;
+  }
+
+  .chapters {
+    margin-bottom: 40px;
   }
 
   /* Swipeable horizontal filter chips on mobile */

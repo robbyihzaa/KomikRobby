@@ -48,8 +48,12 @@ export default async function MangaPage({ params }: { params: Promise<{ slug: st
       <main className="container page-with-nav">
         {/* Detail Header */}
         <div className="detail">
-          <div>
-            <img className="detailcover" src={d.thumbnail || d.image} alt={d.title} />
+          <div className="detail-cover-container">
+            {d.thumbnail || d.image ? (
+              <img className="detailcover" src={d.thumbnail || d.image} alt={d.title} />
+            ) : (
+              <div className="detailcover cover-placeholder">📖</div>
+            )}
           </div>
           <div className="detail-meta">
             <h1 className="detail-title">{d.title}</h1>
