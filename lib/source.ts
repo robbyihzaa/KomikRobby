@@ -47,7 +47,7 @@ export async function fetchHtml(url: string) {
       const r = await fetch(targetUrl, {
         headers: HEADERS,
         cache: "no-store",
-        signal: AbortSignal.timeout(3000), // 3s fast timeout per attempt
+        signal: AbortSignal.timeout(6000), // 6s fast timeout per attempt
       });
 
       if (r.ok) {
@@ -276,44 +276,49 @@ export const komiku = {
     orderby?: string;
     page?: number;
   } = {}) => {
-    const qs = new URLSearchParams();
+    try {
+      const qs = new URLSearchParams();
 
-    // 1. Genre: in komikindo it is genre[]=slug
-    if (params.genre) {
-      qs.set("genre[]", params.genre.toLowerCase());
+      // 1. Genre: in komikindo it is genre[]=slug
+      if (params.genre) {
+        qs.set("genre[]", params.genre.toLowerCase());
+      }
+
+      // 2. Type: Manga / Manhwa / Manhua (capitalized)
+      if (params.type) {
+        const t = params.type.toLowerCase();
+        if (t.includes("manhua")) qs.set("type", "Manhua");
+        else if (t.includes("manhwa")) qs.set("type", "Manhwa");
+        else if (t.includes("manga")) qs.set("type", "Manga");
+      }
+
+      // 3. Status: Ongoing / Completed (capitalized)
+      if (params.status) {
+        const s = params.status.toLowerCase();
+        if (s === "ongoing") qs.set("status", "Ongoing");
+        else if (s === "completed" || s === "end") qs.set("status", "Completed");
+      }
+
+      // 4. Order: order=popular, update, latest, title, titlereverse
+      if (params.orderby) {
+        const o = params.orderby.toLowerCase();
+        if (o === "popular") qs.set("order", "popular");
+        else if (o === "update") qs.set("order", "update");
+        else if (o === "titleasc" || o === "title") qs.set("order", "title");
+        else if (o === "titlereverse") qs.set("order", "titlereverse");
+        else qs.set("order", o);
+      }
+
+      const page = params.page && params.page > 0 ? params.page : 1;
+      const base = page > 1 ? `${BASE}/daftar-manga/page/${page}/` : `${BASE}/daftar-manga/`;
+      const queryString = qs.toString();
+      const url = queryString ? `${base}?${queryString}` : base;
+      const html = await fetchHtml(url);
+      return parseCardsFromHtml(html);
+    } catch (err) {
+      console.error("komiku.filter error:", err);
+      return [];
     }
-
-    // 2. Type: Manga / Manhwa / Manhua (capitalized)
-    if (params.type) {
-      const t = params.type.toLowerCase();
-      if (t.includes("manhua")) qs.set("type", "Manhua");
-      else if (t.includes("manhwa")) qs.set("type", "Manhwa");
-      else if (t.includes("manga")) qs.set("type", "Manga");
-    }
-
-    // 3. Status: Ongoing / Completed (capitalized)
-    if (params.status) {
-      const s = params.status.toLowerCase();
-      if (s === "ongoing") qs.set("status", "Ongoing");
-      else if (s === "completed" || s === "end") qs.set("status", "Completed");
-    }
-
-    // 4. Order: order=popular, update, latest, title, titlereverse
-    if (params.orderby) {
-      const o = params.orderby.toLowerCase();
-      if (o === "popular") qs.set("order", "popular");
-      else if (o === "update") qs.set("order", "update");
-      else if (o === "titleasc" || o === "title") qs.set("order", "title");
-      else if (o === "titlereverse") qs.set("order", "titlereverse");
-      else qs.set("order", o);
-    }
-
-    const page = params.page && params.page > 0 ? params.page : 1;
-    const base = page > 1 ? `${BASE}/daftar-manga/page/${page}/` : `${BASE}/daftar-manga/`;
-    const queryString = qs.toString();
-    const url = queryString ? `${base}?${queryString}` : base;
-    const html = await fetchHtml(url);
-    return parseCardsFromHtml(html);
   },
 
   library: async (page = 1) => komiku.latest(page),
@@ -323,9 +328,15 @@ export const komiku = {
 
   search: async (q: string) => {
     if (!q) return [];
-    const url = `${BASE}/?s=${encodeURIComponent(q)}`;
-    const html = await fetchHtml(url);
-    return parseCardsFromHtml(html);
+    try {
+      const url = `${BASE}/?s=${encodeURIComponent(q)}`;
+      const html = await fetchHtml(url);
+      const items = parseCardsFromHtml(html);
+      if (items.length > 0) return items;
+    } catch (err) {
+      console.error("komiku.search error:", err);
+    }
+    return [];
   },
 
   detail: async (slug: string) => {

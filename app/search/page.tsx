@@ -110,7 +110,18 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           currentOrder={orderby}
         />
 
-        {error && <div className="error">{error}</div>}
+        {error && (
+          <div className="empty-state" style={{ borderColor: "rgba(239, 68, 68, 0.3)", background: "rgba(239, 68, 68, 0.05)" }}>
+            <div className="empty-icon">🌐</div>
+            <h3>Gagal Memuat Data</h3>
+            <p className="muted" style={{ maxWidth: 400, margin: "0 auto 16px" }}>
+              Koneksi ke sumber komik sedang lambat. Klik tombol di bawah untuk mencoba kembali.
+            </p>
+            <Link href={createPageUrl(currentPage)} className="btn btn-primary">
+              🔄 Coba Lagi
+            </Link>
+          </div>
+        )}
 
         {/* Results summary */}
         {!error && (q || hasFilters || items.length > 0) && (
