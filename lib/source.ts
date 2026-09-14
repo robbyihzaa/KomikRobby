@@ -22,39 +22,59 @@ interface CacheEntry {
 const htmlCache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds cache for instant sub-second page loads
 
+const DOMAIN_MIRRORS = [
+  "https://komikindo.ch",
+  "https://komikindo.tv",
+  "https://manhwadesu.wiki",
+  "https://komiku.id"
+];
+
 export async function fetchHtml(url: string) {
   const now = Date.now();
   const cached = htmlCache.get(url);
   
-  // Return instant cached HTML if within 60-second TTL window
   if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
     return cached.html;
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 7000);
-
-  try {
-    const r = await fetch(url, {
-      headers: HEADERS,
-      signal: controller.signal,
-      next: { revalidate: 60 }
-    });
-    clearTimeout(timeoutId);
-
-    if (!r.ok) {
-      if (cached) return cached.html; // Return stale cache if target site returns error
-      throw new Error(`Source returned ${r.status}`);
+  // Build candidate URL array (primary URL + domain mirrors for Vercel US serverless resilience)
+  const candidateUrls: string[] = [url];
+  if (url.startsWith(BASE)) {
+    const path = url.slice(BASE.length);
+    for (const mirror of DOMAIN_MIRRORS) {
+      const mirrorUrl = `${mirror}${path}`;
+      if (!candidateUrls.includes(mirrorUrl)) {
+        candidateUrls.push(mirrorUrl);
+      }
     }
-
-    const text = await r.text();
-    htmlCache.set(url, { html: text, timestamp: now });
-    return text;
-  } catch (err) {
-    clearTimeout(timeoutId);
-    if (cached) return cached.html; // Return stale cache on network timeout/error
-    throw err;
   }
+
+  let lastError: any = null;
+
+  for (const targetUrl of candidateUrls) {
+    try {
+      const r = await fetch(targetUrl, {
+        headers: HEADERS,
+        cache: "no-store"
+      });
+
+      if (r.ok) {
+        const text = await r.text();
+        if (text && text.length > 500) {
+          htmlCache.set(url, { html: text, timestamp: now });
+          return text;
+        }
+      }
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  if (cached && cached.html) {
+    return cached.html;
+  }
+
+  throw lastError || new Error(`Gagal memuat sumber dari semua mirror.`);
 }
 
 /**
@@ -276,9 +296,20 @@ export const komiku = {
    * Uses /komik-terbaru/ which is the site's official "recently updated" list.
    */
   latest: async (page = 1) => {
-    const url = `${BASE}/komik-terbaru/page/${page}/`;
-    const html = await fetchHtml(url);
-    return parseCardsFromHtml(html);
+    try {
+      const url = `${BASE}/komik-terbaru/page/${page}/`;
+      const html = await fetchHtml(url);
+      const items = parseCardsFromHtml(html);
+      if (items.length > 0) return items;
+    } catch (e) {
+      console.error("komiku.latest error, falling back to manhwadesu:", e);
+    }
+    try {
+      const html = await fetchHtml(`https://manhwadesu.wiki/page/${page}/`);
+      return parseManhwaDesuCards(html);
+    } catch (e) {
+      return [];
+    }
   },
 
   /**
@@ -286,11 +317,22 @@ export const komiku = {
    * Uses /manga/?orderby=popular which is the site's official popularity ranking.
    */
   popular: async (page = 1) => {
-    const url = page === 1
-      ? `${BASE}/manga/?orderby=popular`
-      : `${BASE}/manga/page/${page}/?orderby=popular`;
-    const html = await fetchHtml(url);
-    return parseCardsFromHtml(html);
+    try {
+      const url = page === 1
+        ? `${BASE}/manga/?orderby=popular`
+        : `${BASE}/manga/page/${page}/?orderby=popular`;
+      const html = await fetchHtml(url);
+      const items = parseCardsFromHtml(html);
+      if (items.length > 0) return items;
+    } catch (e) {
+      console.error("komiku.popular error, falling back to manhwadesu:", e);
+    }
+    try {
+      const html = await fetchHtml(`https://manhwadesu.wiki/`);
+      return parseManhwaDesuCards(html);
+    } catch (e) {
+      return [];
+    }
   },
 
   manhwadesu: async (page = 1) => {
