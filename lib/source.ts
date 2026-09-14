@@ -340,8 +340,8 @@ const FALLBACK_VIP_ITEMS: any[] = [
   {
     title: "I'm the Only Man on the Military Base",
     slug: "im-the-only-man-on-the-military-base",
-    image: "https://manhwadesu.wiki/wp-content/uploads/images/thumbs/im-the-only-man-on-the-military-base/68270ce06c9de.jpg",
-    thumbnail: "https://manhwadesu.wiki/wp-content/uploads/images/thumbs/im-the-only-man-on-the-military-base/68270ce06c9de.jpg",
+    image: "https://manhwadesu.org/wp-content/uploads/images/thumbs/im-the-only-man-on-the-military-base/68270ce06c9de.jpg",
+    thumbnail: "https://manhwadesu.org/wp-content/uploads/images/thumbs/im-the-only-man-on-the-military-base/68270ce06c9de.jpg",
     type: "Manhwa", updateDate: "Baru", latestChapter: "Ch. 74",
     endpoint: "/detail-komik/im-the-only-man-on-the-military-base",
     isVip: true, source: "manhwadesu",
@@ -349,8 +349,8 @@ const FALLBACK_VIP_ITEMS: any[] = [
   {
     title: "Love Cheer!",
     slug: "love-cheer",
-    image: "https://manhwadesu.wiki/wp-content/uploads/images/thumbs/love-cheer/6a2270af9ca9c.jpg",
-    thumbnail: "https://manhwadesu.wiki/wp-content/uploads/images/thumbs/love-cheer/6a2270af9ca9c.jpg",
+    image: "https://manhwadesu.org/wp-content/uploads/images/thumbs/love-cheer/6a2270af9ca9c.jpg",
+    thumbnail: "https://manhwadesu.org/wp-content/uploads/images/thumbs/love-cheer/6a2270af9ca9c.jpg",
     type: "Manhwa", updateDate: "Baru", latestChapter: "Ch. 20",
     endpoint: "/detail-komik/love-cheer",
     isVip: true, source: "manhwadesu",
@@ -358,8 +358,8 @@ const FALLBACK_VIP_ITEMS: any[] = [
   {
     title: "Affair Agency",
     slug: "affair-agency",
-    image: "https://manhwadesu.wiki/wp-content/uploads/images/thumbs/affair-agency/6a9259926d0b6.jpg",
-    thumbnail: "https://manhwadesu.wiki/wp-content/uploads/images/thumbs/affair-agency/6a9259926d0b6.jpg",
+    image: "https://manhwadesu.org/wp-content/uploads/images/thumbs/affair-agency/6a9259926d0b6.jpg",
+    thumbnail: "https://manhwadesu.org/wp-content/uploads/images/thumbs/affair-agency/6a9259926d0b6.jpg",
     type: "Manhwa", updateDate: "Baru", latestChapter: "Ch. 15",
     endpoint: "/detail-komik/affair-agency",
     isVip: true, source: "manhwadesu",
@@ -367,8 +367,8 @@ const FALLBACK_VIP_ITEMS: any[] = [
   {
     title: "Love Quest",
     slug: "love-quest",
-    image: "https://manhwadesu.wiki/wp-content/uploads/images/thumbs/love-quest/69a50b90a035b.jpg",
-    thumbnail: "https://manhwadesu.wiki/wp-content/uploads/images/thumbs/love-quest/69a50b90a035b.jpg",
+    image: "https://manhwadesu.org/wp-content/uploads/images/thumbs/love-quest/69a50b90a035b.jpg",
+    thumbnail: "https://manhwadesu.org/wp-content/uploads/images/thumbs/love-quest/69a50b90a035b.jpg",
     type: "Manhwa", updateDate: "Baru", latestChapter: "Ch. 33",
     endpoint: "/detail-komik/love-quest",
     isVip: true, source: "manhwadesu",
@@ -376,8 +376,8 @@ const FALLBACK_VIP_ITEMS: any[] = [
   {
     title: "Wireless Onahole",
     slug: "wireless-onahole",
-    image: "https://manhwadesu.wiki/wp-content/uploads/images/thumbs/wireless-onahole/67dee5d65c90c.jpg",
-    thumbnail: "https://manhwadesu.wiki/wp-content/uploads/images/thumbs/wireless-onahole/67dee5d65c90c.jpg",
+    image: "https://manhwadesu.org/wp-content/uploads/images/thumbs/wireless-onahole/67dee5d65c90c.jpg",
+    thumbnail: "https://manhwadesu.org/wp-content/uploads/images/thumbs/wireless-onahole/67dee5d65c90c.jpg",
     type: "Manhwa", updateDate: "Baru", latestChapter: "Ch. 119",
     endpoint: "/detail-komik/wireless-onahole",
     isVip: true, source: "manhwadesu",
@@ -385,8 +385,8 @@ const FALLBACK_VIP_ITEMS: any[] = [
   {
     title: "My Ideal Type is my Friend's Mom",
     slug: "my-ideal-type-is-my-friends-mom",
-    image: "https://manhwadesu.wiki/wp-content/uploads/images/thumbs/my-ideal-type-is-my-friends-mom/6a884892bd478.jpg",
-    thumbnail: "https://manhwadesu.wiki/wp-content/uploads/images/thumbs/my-ideal-type-is-my-friends-mom/6a884892bd478.jpg",
+    image: "https://manhwadesu.org/wp-content/uploads/images/thumbs/my-ideal-type-is-my-friends-mom/6a884892bd478.jpg",
+    thumbnail: "https://manhwadesu.org/wp-content/uploads/images/thumbs/my-ideal-type-is-my-friends-mom/6a884892bd478.jpg",
     type: "Manhwa", updateDate: "Baru", latestChapter: "Ch. 9",
     endpoint: "/detail-komik/my-ideal-type-is-my-friends-mom",
     isVip: true, source: "manhwadesu",
@@ -449,25 +449,23 @@ export const komiku = {
   },
 
   manhwadesu: async (page = 1) => {
-    // Stage 1: Try manhwadesu.wiki direct
+    // Stage 1: Try manhwadesu.org (live open mirror, status 200)
+    try {
+      const url = page === 1 ? `https://manhwadesu.org/` : `https://manhwadesu.org/page/${page}/`;
+      const html = await fetchHtml(url);
+      const items = parseManhwaDesuCards(html);
+      if (items.length > 0) return items;
+    } catch (err) {
+      console.error("manhwadesu.org fetch failed, trying wiki:", err);
+    }
+
+    // Stage 2: Try manhwadesu.wiki fallback
     try {
       const url = page === 1 ? `https://manhwadesu.wiki/` : `https://manhwadesu.wiki/page/${page}/`;
       const html = await fetchHtml(url);
       const items = parseManhwaDesuCards(html);
       if (items.length > 0) return items;
-    } catch (err) {
-      console.error("manhwadesu.wiki fetch failed, trying komikindo manhwa filter:", err);
-    }
-
-    // Stage 2: Try komikindo Manhwa filter
-    try {
-      const url = `${BASE}/manga/?type=Manhwa&order=update&page=${page}`;
-      const html = await fetchHtml(url);
-      const items = parseCardsFromHtml(html);
-      if (items.length > 0) {
-        return items.map(item => ({ ...item, isVip: true, source: "manhwadesu" }));
-      }
-    } catch (e2) {}
+    } catch (err) {}
 
     // Stage 3: Return curated fallback VIP items for 100% cloud resilience
     return FALLBACK_VIP_ITEMS;
@@ -554,12 +552,16 @@ export const komiku = {
       }
     }
 
-    // Stage 3: VIP provider (manhwadesu.wiki)
+    // Stage 3: VIP provider (manhwadesu.org -> manhwadesu.wiki)
     if (!html) {
       try {
-        html = await fetchHtml(`https://manhwadesu.wiki/komik/${cleanSlug}/`);
+        html = await fetchHtml(`https://manhwadesu.org/komik/${cleanSlug}/`);
       } catch (err3) {
-        console.error("komiku.detail manhwadesu.wiki failed:", err3);
+        try {
+          html = await fetchHtml(`https://manhwadesu.wiki/komik/${cleanSlug}/`);
+        } catch (err3b) {
+          console.error("komiku.detail manhwadesu failed:", err3b);
+        }
       }
     }
 
@@ -758,12 +760,17 @@ export const komiku = {
             : `https://komiku.id/${cleanSlug}-chapter-${cleanNumber}/`;
           html = await fetchHtml(komikuChUrl);
         } catch (err3) {
-          // Fallback 2: manhwadesu.wiki chapter
+          // Fallback 2: manhwadesu.org & wiki chapter
           try {
-            const mdChUrl = `https://manhwadesu.wiki/${cleanSlug}-chapter-${cleanNumber}/`;
+            const mdChUrl = `https://manhwadesu.org/${cleanSlug}-chapter-${cleanNumber}/`;
             html = await fetchHtml(mdChUrl);
           } catch (err4) {
-            throw new Error(`Chapter ${cleanNumber} tidak ditemukan.`);
+            try {
+              const mdWikiUrl = `https://manhwadesu.wiki/${cleanSlug}-chapter-${cleanNumber}/`;
+              html = await fetchHtml(mdWikiUrl);
+            } catch (err4b) {
+              throw new Error(`Chapter ${cleanNumber} tidak ditemukan.`);
+            }
           }
         }
       }
