@@ -20,14 +20,7 @@ interface CacheEntry {
 }
 
 const htmlCache = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = 60 * 1000; // 60 seconds cache for instant sub-second page loads
-
-const DOMAIN_MIRRORS = [
-  "https://komikindo.ch",
-  "https://komikindo.tv",
-  "https://manhwadesu.wiki",
-  "https://komiku.id"
-];
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache for instant 0ms page loads
 
 export async function fetchHtml(url: string) {
   const now = Date.now();
@@ -37,16 +30,14 @@ export async function fetchHtml(url: string) {
     return cached.html;
   }
 
-  // Build candidate URL array (primary URL + domain mirrors for Vercel US serverless resilience)
+  // Build candidate URLs with relevant domain mirrors
   const candidateUrls: string[] = [url];
   if (url.startsWith(BASE)) {
     const path = url.slice(BASE.length);
-    for (const mirror of DOMAIN_MIRRORS) {
-      const mirrorUrl = `${mirror}${path}`;
-      if (!candidateUrls.includes(mirrorUrl)) {
-        candidateUrls.push(mirrorUrl);
-      }
-    }
+    candidateUrls.push(`https://komikindo.tv${path}`);
+  } else if (url.startsWith("https://manhwadesu.org")) {
+    const path = url.slice("https://manhwadesu.org".length);
+    candidateUrls.push(`https://manhwadesu.wiki${path}`);
   }
 
   let lastError: any = null;
@@ -55,12 +46,13 @@ export async function fetchHtml(url: string) {
     try {
       const r = await fetch(targetUrl, {
         headers: HEADERS,
-        cache: "no-store"
+        cache: "no-store",
+        signal: AbortSignal.timeout(3000), // 3s fast timeout per attempt
       });
 
       if (r.ok) {
         const text = await r.text();
-        if (text && text.length > 500) {
+        if (text && text.length > 300) {
           htmlCache.set(url, { html: text, timestamp: now });
           return text;
         }
@@ -70,6 +62,7 @@ export async function fetchHtml(url: string) {
     }
   }
 
+  // Return stale cache if live requests timed out or failed
   if (cached && cached.html) {
     return cached.html;
   }
