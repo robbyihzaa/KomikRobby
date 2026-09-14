@@ -61,10 +61,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
         <section className="section">
           <div className="section-header">
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <h2>🔥 Terpopuler</h2>
-              <span className="section-badge">Ranking</span>
+              <h2>🔥 Manhwa Terpopuler</h2>
+              <span className="section-badge">Top Ranking</span>
             </div>
-            <Link href="/browse?orderby=popular" className="btn-text-toggle" style={{ fontSize: 13 }}>
+            <Link href="/browse?type=manhwa&orderby=popular" className="btn-text-toggle" style={{ fontSize: 13 }}>
               Lihat Semua →
             </Link>
           </div>

@@ -233,11 +233,21 @@ export const komiku = {
   },
 
   /**
-   * Popular comics sorted by all-time views.
-   * Uses /manga/?orderby=popular which is the site's official popularity ranking.
+   * Popular comics sorted by all-time views (prioritizing popular Manhwa).
    */
   popular: async (page = 1) => {
-    // Stage 1: komikindo.ch (primary)
+    // Stage 1: komikindo.ch popular Manhwa (primary)
+    try {
+      const url = page === 1
+        ? `${BASE}/daftar-manga/?type=Manhwa&order=popular`
+        : `${BASE}/daftar-manga/page/${page}/?type=Manhwa&order=popular`;
+      const html = await fetchHtml(url);
+      const items = parseCardsFromHtml(html);
+      if (items.length > 0) return items;
+    } catch (e) {
+      console.error("komiku.popular primary failed:", e);
+    }
+    // Stage 2: komikindo.ch general popular fallback
     try {
       const url = page === 1
         ? `${BASE}/manga/?orderby=popular`
@@ -245,10 +255,8 @@ export const komiku = {
       const html = await fetchHtml(url);
       const items = parseCardsFromHtml(html);
       if (items.length > 0) return items;
-    } catch (e) {
-      console.error("komiku.popular primary failed:", e);
-    }
-    // Stage 2: komiku.id popular ranking (cloud-friendly fallback)
+    } catch (e) {}
+    // Stage 3: komiku.id popular ranking (cloud-friendly fallback)
     try {
       const html = await fetchHtml(`https://komiku.id/`);
       const items = parseKomikuCards(html);

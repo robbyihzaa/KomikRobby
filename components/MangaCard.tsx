@@ -38,7 +38,7 @@ export default function MangaCard({ item, rank }: MangaCardProps) {
             <div className="cover cover-placeholder">📖</div>
           )}
           <span className={`card-flag-badge ${typeInfo.cls}`}>{typeInfo.full}</span>
-          {rank !== undefined && rank <= 2 && (
+          {rank !== undefined && (
             <span className="card-rank-badge">#{rank + 1}</span>
           )}
         </div>
