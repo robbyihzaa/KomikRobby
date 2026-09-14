@@ -202,193 +202,6 @@ export function parseKomikuCards(html: string) {
   return items;
 }
 
-export function parseManhwaDesuCards(html: string) {
-  const items: any[] = [];
-  const seen = new Set<string>();
-
-  const extractImage = (block: string): string => {
-    const imgMatch =
-      block.match(/data-wpfc-original-src="([^"]+)"/i) ||
-      block.match(/data-src="([^"]+)"/i) ||
-      block.match(/data-lazy-src="([^"]+)"/i) ||
-      block.match(/src="([^"]+\.(?:jpg|webp|png|jpeg)[^"]*)"/i) ||
-      block.match(/src="([^"]+)"/i);
-
-    let img = imgMatch ? imgMatch[1] : "";
-    if (img.includes("data:image")) img = "";
-    if (img.startsWith("//")) img = "https:" + img;
-    else if (img.startsWith("/")) img = "https://manhwadesu.org" + img;
-    return img;
-  };
-
-  // 1. Try parsing <div class="utao"> (latest project updates)
-  const utaoMatches = [...html.matchAll(/<div class="utao">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/gi)];
-  for (const m of utaoMatches) {
-    const block = m[1];
-    const linkMatch = block.match(/href="[^"]*\/komik\/([^"\/]+)\/?"[^>]*title="([^"]+)"/i) ||
-                      block.match(/href="[^"]*\/komik\/([^"\/]+)\/?"/i);
-    if (!linkMatch) continue;
-
-    const slug = linkMatch[1];
-    if (!slug || seen.has(slug)) continue;
-
-    const title = linkMatch[2] ? linkMatch[2].replace(/^Komik\s+/i, "").trim() : slug;
-    const image = extractImage(block);
-
-    const chMatch = block.match(/<a [^>]*>\s*(Ch\.\s*[\d.]+)\s*<\/a>\s*<span>([\s\S]*?)<\/span>/i) ||
-                    block.match(/<a [^>]*>\s*(Chapter\s*[\d.]+)\s*<\/a>\s*<span>([\s\S]*?)<\/span>/i);
-    const latestChapter = chMatch ? chMatch[1].trim() : "";
-    const updateDate = chMatch ? chMatch[2].replace(/<[^>]+>/g, "").trim() : "";
-
-    const typeMatch = block.match(/class="(?:type|typeflag)\s+([^"\s]+)"/i) || block.match(/<ul class="([^"]+)">/i);
-    const type = typeMatch ? typeMatch[1].trim() : "Manhwa";
-
-    seen.add(slug);
-    items.push({
-      title,
-      slug,
-      image,
-      thumbnail: image,
-      type: type.toLowerCase().includes("manhua") ? "Manhua" : type.toLowerCase().includes("manga") ? "Manga" : "Manhwa",
-      updateDate,
-      latestChapter,
-      endpoint: `/detail-komik/${slug}`,
-      isVip: false,
-      source: "manhwadesu",
-    });
-  }
-
-  // 2. Parse <div class="bs"> or <article class="bs"> (grid cards)
-  const bsMatches = [...html.matchAll(/<(?:div|article) class="bs">([\s\S]*?)<\/(?:div|article)>/gi)];
-  for (const m of bsMatches) {
-    const block = m[1];
-    const linkMatch = block.match(/href="[^"]*\/komik\/([^"\/]+)\/?"[^>]*title="([^"]+)"/i) ||
-                      block.match(/href="[^"]*\/komik\/([^"\/]+)\/?"/i);
-    if (!linkMatch) continue;
-
-    const slug = linkMatch[1];
-    if (!slug || seen.has(slug)) continue;
-
-    const title = linkMatch[2] ? linkMatch[2].replace(/^Komik\s+/i, "").trim() : slug;
-    const image = extractImage(block);
-
-    const chMatch = block.match(/class="epxs">([\s\S]*?)<\/div>/i);
-    const latestChapter = chMatch ? chMatch[1].replace(/<[^>]+>/g, "").trim() : "";
-
-    const typeMatch = block.match(/class="type\s+([^"\s]+)"/i);
-    const type = typeMatch ? typeMatch[1].trim() : "Manhwa";
-
-    seen.add(slug);
-    items.push({
-      title,
-      slug,
-      image,
-      thumbnail: image,
-      type: type.toLowerCase().includes("manhua") ? "Manhua" : type.toLowerCase().includes("manga") ? "Manga" : "Manhwa",
-      updateDate: "",
-      latestChapter,
-      endpoint: `/detail-komik/${slug}`,
-      isVip: false,
-      source: "manhwadesu",
-    });
-  }
-
-  // 3. Fallback for generic comic <a> links
-  if (items.length === 0) {
-    const comicLinks = [...html.matchAll(/<a [^>]*href="([^"]*\/komik\/([^"\/]+)\/?)"[^>]*>([\s\S]*?)<\/a>/gi)];
-    for (const m of comicLinks) {
-      const slug = m[2];
-      const inner = m[3];
-
-      if (!slug || seen.has(slug)) continue;
-      seen.add(slug);
-
-      const imgMatch = inner.match(/data-wpfc-original-src="([^"]+)"/i) || inner.match(/src="([^"]+)"/i) || inner.match(/data-src="([^"]+)"/i);
-      const titleMatch = inner.match(/title="([^"]+)"/i) || inner.match(/<h\d[^>]*>([\s\S]*?)<\/h\d>/i);
-
-      const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, "").replace(/^Komik\s+/i, "").trim() : slug;
-      let image = imgMatch ? imgMatch[1] : "";
-      if (image.includes("data:image")) image = "";
-
-      items.push({
-        title,
-        slug,
-        image,
-        thumbnail: image,
-        type: "Manhwa",
-        updateDate: "",
-        latestChapter: "",
-        endpoint: `/detail-komik/${slug}`,
-        isVip: true,
-        source: "manhwadesu",
-      });
-    }
-  }
-
-  return items;
-}
-
-/**
- * Curated fallback VIP items — used when both manhwadesu.wiki and komikindo
- * are unreachable from Vercel/cloud serverless (e.g. Cloudflare Geo-IP block).
- */
-const FALLBACK_VIP_ITEMS: any[] = [
-  {
-    title: "I'm the Only Man on the Military Base",
-    slug: "im-the-only-man-on-the-military-base",
-    image: "https://manhwadesu.org/wp-content/uploads/images/thumbs/im-the-only-man-on-the-military-base/68270ce06c9de.jpg",
-    thumbnail: "https://manhwadesu.org/wp-content/uploads/images/thumbs/im-the-only-man-on-the-military-base/68270ce06c9de.jpg",
-    type: "Manhwa", updateDate: "Baru", latestChapter: "Ch. 74",
-    endpoint: "/detail-komik/im-the-only-man-on-the-military-base",
-    isVip: true, source: "manhwadesu",
-  },
-  {
-    title: "Love Cheer!",
-    slug: "love-cheer",
-    image: "https://manhwadesu.org/wp-content/uploads/images/thumbs/love-cheer/6a2270af9ca9c.jpg",
-    thumbnail: "https://manhwadesu.org/wp-content/uploads/images/thumbs/love-cheer/6a2270af9ca9c.jpg",
-    type: "Manhwa", updateDate: "Baru", latestChapter: "Ch. 20",
-    endpoint: "/detail-komik/love-cheer",
-    isVip: true, source: "manhwadesu",
-  },
-  {
-    title: "Affair Agency",
-    slug: "affair-agency",
-    image: "https://manhwadesu.org/wp-content/uploads/images/thumbs/affair-agency/6a9259926d0b6.jpg",
-    thumbnail: "https://manhwadesu.org/wp-content/uploads/images/thumbs/affair-agency/6a9259926d0b6.jpg",
-    type: "Manhwa", updateDate: "Baru", latestChapter: "Ch. 15",
-    endpoint: "/detail-komik/affair-agency",
-    isVip: true, source: "manhwadesu",
-  },
-  {
-    title: "Love Quest",
-    slug: "love-quest",
-    image: "https://manhwadesu.org/wp-content/uploads/images/thumbs/love-quest/69a50b90a035b.jpg",
-    thumbnail: "https://manhwadesu.org/wp-content/uploads/images/thumbs/love-quest/69a50b90a035b.jpg",
-    type: "Manhwa", updateDate: "Baru", latestChapter: "Ch. 33",
-    endpoint: "/detail-komik/love-quest",
-    isVip: true, source: "manhwadesu",
-  },
-  {
-    title: "Wireless Onahole",
-    slug: "wireless-onahole",
-    image: "https://manhwadesu.org/wp-content/uploads/images/thumbs/wireless-onahole/67dee5d65c90c.jpg",
-    thumbnail: "https://manhwadesu.org/wp-content/uploads/images/thumbs/wireless-onahole/67dee5d65c90c.jpg",
-    type: "Manhwa", updateDate: "Baru", latestChapter: "Ch. 119",
-    endpoint: "/detail-komik/wireless-onahole",
-    isVip: true, source: "manhwadesu",
-  },
-  {
-    title: "My Ideal Type is my Friend's Mom",
-    slug: "my-ideal-type-is-my-friends-mom",
-    image: "https://manhwadesu.org/wp-content/uploads/images/thumbs/my-ideal-type-is-my-friends-mom/6a884892bd478.jpg",
-    thumbnail: "https://manhwadesu.org/wp-content/uploads/images/thumbs/my-ideal-type-is-my-friends-mom/6a884892bd478.jpg",
-    type: "Manhwa", updateDate: "Baru", latestChapter: "Ch. 9",
-    endpoint: "/detail-komik/my-ideal-type-is-my-friends-mom",
-    isVip: true, source: "manhwadesu",
-  },
-];
-
 /**
  * High-performance direct Manhwa / Comic Sub Indo Adapter.
  */
@@ -444,38 +257,7 @@ export const komiku = {
     return [];
   },
 
-  manhwadesu: async (page = 1) => {
-    // Stage 1: Try manhwadesu.org (live open mirror, status 200)
-    try {
-      const url = page === 1 ? `https://manhwadesu.org/` : `https://manhwadesu.org/page/${page}/`;
-      const html = await fetchHtml(url);
-      const items = parseManhwaDesuCards(html);
-      if (items.length > 0) return items;
-    } catch (err) {
-      console.error("manhwadesu.org fetch failed:", err);
-    }
 
-    // Stage 2: Try manhwadesu.wiki fallback
-    try {
-      const url = page === 1 ? `https://manhwadesu.wiki/` : `https://manhwadesu.wiki/page/${page}/`;
-      const html = await fetchHtml(url);
-      const items = parseManhwaDesuCards(html);
-      if (items.length > 0) return items;
-    } catch (err) {}
-
-    // Stage 3: Try komikindo Manhwa section
-    try {
-      const url = page === 1
-        ? `${BASE}/manga/?type=Manhwa&order=update`
-        : `${BASE}/manga/page/${page}/?type=Manhwa&order=update`;
-      const html = await fetchHtml(url);
-      const items = parseCardsFromHtml(html);
-      if (items.length > 0) return items;
-    } catch (e) {}
-
-    // Stage 4: Return curated fallback VIP items for 100% cloud resilience
-    return FALLBACK_VIP_ITEMS;
-  },
 
 
 
@@ -558,49 +340,8 @@ export const komiku = {
       }
     }
 
-    // Stage 3: VIP provider (manhwadesu.org -> manhwadesu.wiki)
+    // Stage 3: Throw clean error if all providers fail
     if (!html) {
-      try {
-        html = await fetchHtml(`https://manhwadesu.org/komik/${cleanSlug}/`);
-      } catch (err3) {
-        try {
-          html = await fetchHtml(`https://manhwadesu.wiki/komik/${cleanSlug}/`);
-        } catch (err3b) {
-          console.error("komiku.detail manhwadesu failed:", err3b);
-        }
-      }
-    }
-
-    // Stage 4: Static fallback for VIP titles if all live providers fail on cloud
-    if (!html) {
-      const vipFallback = FALLBACK_VIP_ITEMS.find((item) => item.slug === cleanSlug);
-      if (vipFallback) {
-        const dummyChapters = Array.from({ length: 20 }, (_, i) => {
-          const chNum = (20 - i).toString();
-          return {
-            title: `Chapter ${chNum}`,
-            name: `Chapter ${chNum}`,
-            chapter_number: chNum,
-            number: chNum,
-            endpoint: `${cleanSlug}-chapter-${chNum}`,
-            url: `https://manhwadesu.wiki/${cleanSlug}-chapter-${chNum}/`,
-          };
-        });
-        return {
-          title: vipFallback.title,
-          image: vipFallback.image,
-          thumbnail: vipFallback.image,
-          description: `Komik VIP "${vipFallback.title}". Nikmati chapter terbaru di Advance section.`,
-          desc: `Komik VIP "${vipFallback.title}". Nikmati chapter terbaru di Advance section.`,
-          type: vipFallback.type || "Manhwa",
-          status: "Ongoing",
-          author: "ManhwaDesu",
-          genre: ["Adult", "Ecchi", "Romance", "Manhwa"],
-          chapters: dummyChapters,
-          chapter_list: dummyChapters,
-        };
-      }
-
       throw new Error(`Detail komik "${cleanSlug}" tidak dapat dimuat.`);
     }
 
@@ -766,18 +507,7 @@ export const komiku = {
             : `https://komiku.id/${cleanSlug}-chapter-${cleanNumber}/`;
           html = await fetchHtml(komikuChUrl);
         } catch (err3) {
-          // Fallback 2: manhwadesu.org & wiki chapter
-          try {
-            const mdChUrl = `https://manhwadesu.org/${cleanSlug}-chapter-${cleanNumber}/`;
-            html = await fetchHtml(mdChUrl);
-          } catch (err4) {
-            try {
-              const mdWikiUrl = `https://manhwadesu.wiki/${cleanSlug}-chapter-${cleanNumber}/`;
-              html = await fetchHtml(mdWikiUrl);
-            } catch (err4b) {
-              throw new Error(`Chapter ${cleanNumber} tidak ditemukan.`);
-            }
-          }
+          throw new Error(`Chapter ${cleanNumber} tidak ditemukan.`);
         }
       }
     }

@@ -7,10 +7,8 @@ import { useState, useEffect } from "react";
 const navLinks = [
   { href: "/", label: "Home", mobileLabel: "Home", icon: "🏠" },
   { href: "/search", label: "Cari & Filter", mobileLabel: "Cari", icon: "🔍" },
-  { href: "/advance", label: "Advance", mobileLabel: "Advance", icon: "👑" },
   { href: "/bookmark", label: "Bookmark", mobileLabel: "Bookmark", icon: "🔖" },
   { href: "/history", label: "History", mobileLabel: "Riwayat", icon: "🕓" },
-  { href: "/account", label: "Akun", mobileLabel: "Akun", icon: "👤" },
 ];
 
 export default function Navbar() {

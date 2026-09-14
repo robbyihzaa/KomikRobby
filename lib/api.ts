@@ -8,10 +8,6 @@ export async function popular(page: number = 1) {
   return komiku.popular(page);
 }
 
-export async function manhwadesu(page: number = 1) {
-  return komiku.manhwadesu(page);
-}
-
 
 
 export async function search(q: string) {
