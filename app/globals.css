@@ -2083,3 +2083,123 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   font-size: 13px;
   color: var(--text-primary);
 }
+
+/* ─── Detail Actions & Mobile Quick Read Buttons ─────────── */
+.detail-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.btn-read-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, var(--accent) 0%, #8176ff 100%);
+  color: #fff !important;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px var(--accent-glow);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.btn-read-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(108, 99, 255, 0.45);
+}
+
+.btn-read-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary) !important;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  transition: all var(--transition);
+}
+
+.btn-read-secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--accent);
+}
+
+/* ─── Chapter Search Input Box ───────────────────────────── */
+.chapter-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chapter-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 0 12px;
+  transition: border-color var(--transition);
+}
+
+.chapter-search-box:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.chapter-search-box .search-icon {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-right: 8px;
+}
+
+.chapter-search-input {
+  width: 100%;
+  height: 42px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.clear-search-btn {
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 4px;
+  border-radius: 50%;
+  transition: color var(--transition);
+}
+
+.clear-search-btn:hover {
+  color: var(--text-primary);
+}
+
+/* ─── Mobile Safe Area Insets (iPhone Notch / Home Indicator) */
+.bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 680px) {
+  .detail-actions-row {
+    width: 100%;
+  }
+
+  .btn-read-primary, .btn-read-secondary {
+    flex: 1;
+    min-width: 130px;
+    font-size: 13px;
+    padding: 10px 12px;
+    text-align: center;
+  }
+}

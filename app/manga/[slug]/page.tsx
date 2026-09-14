@@ -84,8 +84,24 @@ export default async function MangaPage({ params }: { params: Promise<{ slug: st
               </div>
             )}
 
-            {/* Bookmark Button */}
-            <div style={{ marginTop: 16 }}>
+            {/* Action Buttons for Mobile & Desktop */}
+            <div className="detail-actions-row">
+              {chapters.length > 0 && (
+                <>
+                  <Link
+                    href={`/manga/${slug}/chapter/${encodeURIComponent(chapters[chapters.length - 1].chapter_number || chapters[chapters.length - 1].number || "1")}`}
+                    className="btn-read-primary"
+                  >
+                    🚀 Baca Ch. 1
+                  </Link>
+                  <Link
+                    href={`/manga/${slug}/chapter/${encodeURIComponent(chapters[0].chapter_number || chapters[0].number || "1")}`}
+                    className="btn-read-secondary"
+                  >
+                    🔥 Latest (Ch. {chapters[0].chapter_number || chapters[0].number})
+                  </Link>
+                </>
+              )}
               <BookmarkButton meta={meta} />
             </div>
           </div>
