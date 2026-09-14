@@ -74,7 +74,7 @@ export default function ChapterReader({
           window.innerHeight + currentScrollY >= document.documentElement.scrollHeight - 80;
         if (atBottom) {
           advancedRef.current = true;
-          router.push(`/manga/${slug}/chapter/${nextChapter.number}`);
+          router.replace(`/manga/${slug}/chapter/${nextChapter.number}`);
         }
       }
     };
@@ -97,6 +97,20 @@ export default function ChapterReader({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [router, slug, prevChapter, nextChapter]);
 
+  // Intercept hardware/browser back button on mobile to always return to chapter list (/manga/${slug})
+  useEffect(() => {
+    window.history.pushState({ readerPage: true }, "");
+
+    const handlePopState = () => {
+      router.replace(`/manga/${slug}`);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [router, slug]);
+
   // Tap-to-toggle navigator
   const handleScreenClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
@@ -115,7 +129,7 @@ export default function ChapterReader({
   const handleChapterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedNum = e.target.value;
     if (selectedNum && selectedNum !== number) {
-      router.push(`/manga/${slug}/chapter/${selectedNum}`);
+      router.replace(`/manga/${slug}/chapter/${selectedNum}`);
     }
   };
 
