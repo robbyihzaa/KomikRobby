@@ -163,6 +163,52 @@ export function parseCardsFromHtml(html: string) {
   return items;
 }
 
+/**
+ * Parse comic cards from komiku.id — uses <article class="manga-card"> structure.
+ * komiku.id is cloud-friendly (no Cloudflare Geo-IP block).
+ */
+export function parseKomikuCards(html: string) {
+  const items: any[] = [];
+  const seen = new Set<string>();
+
+  const blocks = [...html.matchAll(/<article class="manga-card">([\s\S]*?)<\/article>/gi)];
+  for (const m of blocks) {
+    const block = m[1];
+
+    const linkMatch = block.match(/href="\/(?:manga|komik)\/([^"\/]+)\/?"/i);
+    if (!linkMatch) continue;
+    const slug = linkMatch[1];
+    if (!slug || seen.has(slug)) continue;
+    seen.add(slug);
+
+    const titleMatch = block.match(/<h4[^>]*>[^<]*<a[^>]*>\s*([^<]+)/i)
+      || block.match(/alt="\s*([^"]+)"/i);
+    const title = titleMatch ? titleMatch[1].replace(/^Baca\s+(Komik\s+)?/i, "").trim() : slug;
+
+    const imgMatch = block.match(/data-src="(https?:\/\/[^"]+)"/i)
+      || block.match(/src="(https?:\/\/[^"]+\.(?:jpg|webp|png)[^"]*)"/i);
+    const image = imgMatch ? imgMatch[1] : "";
+
+    const chMatch = block.match(/Chapter\s*([\d.]+)/i);
+    const latestChapter = chMatch ? `Ch. ${chMatch[1]}` : "";
+
+    const typeVal = /manhwa/i.test(block) ? "Manhwa" : /manhua/i.test(block) ? "Manhua" : "Manga";
+
+    items.push({
+      title,
+      slug,
+      image,
+      thumbnail: image,
+      type: typeVal,
+      updateDate: "",
+      latestChapter,
+      endpoint: `/detail-komik/${slug}`,
+      source: "komiku",
+    });
+  }
+  return items;
+}
+
 export function parseManhwaDesuCards(html: string) {
   const items: any[] = [];
   const seen = new Set<string>();
@@ -356,22 +402,25 @@ export const komiku = {
    * Uses /komik-terbaru/ which is the site's official "recently updated" list.
    */
   latest: async (page = 1) => {
+    // Stage 1: komikindo.ch (primary)
     try {
       const url = `${BASE}/komik-terbaru/page/${page}/`;
       const html = await fetchHtml(url);
       const items = parseCardsFromHtml(html);
       if (items.length > 0) return items;
     } catch (e) {
-      console.error("komiku.latest error, falling back to manhwadesu:", e);
+      console.error("komiku.latest primary failed:", e);
     }
+    // Stage 2: komiku.id (cloud-friendly fallback, no Cloudflare block)
     try {
-      const html = await fetchHtml(`https://manhwadesu.wiki/page/${page}/`);
-      const items = parseManhwaDesuCards(html);
+      const url = page === 1
+        ? `https://komiku.id/daftar-komik/?orderby=date&status=`
+        : `https://komiku.id/daftar-komik/page/${page}/?orderby=date&status=`;
+      const html = await fetchHtml(url);
+      const items = parseKomikuCards(html);
       if (items.length > 0) return items;
     } catch (e) {}
-
-    // Ultimate fallback if cloud provider blocks all live fetches
-    return FALLBACK_VIP_ITEMS.slice(0, 10);
+    return [];
   },
 
   /**
@@ -379,6 +428,7 @@ export const komiku = {
    * Uses /manga/?orderby=popular which is the site's official popularity ranking.
    */
   popular: async (page = 1) => {
+    // Stage 1: komikindo.ch (primary)
     try {
       const url = page === 1
         ? `${BASE}/manga/?orderby=popular`
@@ -387,16 +437,15 @@ export const komiku = {
       const items = parseCardsFromHtml(html);
       if (items.length > 0) return items;
     } catch (e) {
-      console.error("komiku.popular error, falling back to manhwadesu:", e);
+      console.error("komiku.popular primary failed:", e);
     }
+    // Stage 2: komiku.id popular ranking (cloud-friendly fallback)
     try {
-      const html = await fetchHtml(`https://manhwadesu.wiki/`);
-      const items = parseManhwaDesuCards(html);
+      const html = await fetchHtml(`https://komiku.id/`);
+      const items = parseKomikuCards(html);
       if (items.length > 0) return items;
     } catch (e) {}
-
-    // Ultimate fallback if cloud provider blocks all live fetches
-    return FALLBACK_VIP_ITEMS;
+    return [];
   },
 
   manhwadesu: async (page = 1) => {
