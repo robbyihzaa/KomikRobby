@@ -536,98 +536,172 @@ export const komiku = {
 
   detail: async (slug: string) => {
     const cleanSlug = decodeURIComponent(slug).replace(/^\/detail-komik\//, "").replace(/\/$/, "");
-    let url = cleanSlug.startsWith("http") ? cleanSlug : `${BASE}/komik/${cleanSlug}/`;
     let html = "";
 
+    // Stage 1: Primary provider (komikindo.ch)
     try {
-      html = await fetchHtml(url);
+      html = await fetchHtml(`${BASE}/komik/${cleanSlug}/`);
     } catch (err) {
-      // Fallback to manhwadesu.wiki if main provider returns 404
+      console.error("komiku.detail komikindo.ch failed, trying komiku.id:", err);
+    }
+
+    // Stage 2: Cloud-friendly fallback (komiku.id - no Cloudflare block on Vercel/AWS)
+    if (!html) {
       try {
-        url = `https://manhwadesu.wiki/komik/${cleanSlug}/`;
-        html = await fetchHtml(url);
-      } catch (e2) {
-        throw new Error(`Detail komik "${cleanSlug}" tidak ditemukan.`);
+        html = await fetchHtml(`https://komiku.id/manga/${cleanSlug}/`);
+      } catch (err2) {
+        console.error("komiku.detail komiku.id failed, trying manhwadesu.wiki:", err2);
       }
     }
 
-    const title = html.match(/<h1 class="entry-title"[^>]*>([\s\S]*?)<\/h1>/i)?.[1]?.replace(/<[^>]+>/g, "")?.replace(/^Komik\s+/i, "")?.trim() || cleanSlug;
-    const image = html.match(/<div class="thumb"[^>]*>[\s\S]*?<img [^>]*src="([^"]+)"/i)?.[1] || "";
-    const desc = html.match(/<div class="entry-content entry-content-single"[^>]*>([\s\S]*?)<\/div>/i)?.[1]?.replace(/<[^>]+>/g, "")?.trim() || "Tidak ada deskripsi.";
-    const type = html.match(/Type:<\/b>\s*<a[^>]*>(.*?)<\/a>/i)?.[1] || html.match(/Type:<\/b>\s*(.*?)</i)?.[1] || "Manhwa";
+    // Stage 3: VIP provider (manhwadesu.wiki)
+    if (!html) {
+      try {
+        html = await fetchHtml(`https://manhwadesu.wiki/komik/${cleanSlug}/`);
+      } catch (err3) {
+        console.error("komiku.detail manhwadesu.wiki failed:", err3);
+      }
+    }
+
+    // Stage 4: Static fallback for VIP titles if all live providers fail on cloud
+    if (!html) {
+      const vipFallback = FALLBACK_VIP_ITEMS.find((item) => item.slug === cleanSlug);
+      if (vipFallback) {
+        const dummyChapters = Array.from({ length: 20 }, (_, i) => {
+          const chNum = (20 - i).toString();
+          return {
+            title: `Chapter ${chNum}`,
+            name: `Chapter ${chNum}`,
+            chapter_number: chNum,
+            number: chNum,
+            endpoint: `${cleanSlug}-chapter-${chNum}`,
+            url: `https://manhwadesu.wiki/${cleanSlug}-chapter-${chNum}/`,
+          };
+        });
+        return {
+          title: vipFallback.title,
+          image: vipFallback.image,
+          thumbnail: vipFallback.image,
+          description: `Komik VIP "${vipFallback.title}". Nikmati chapter terbaru di Advance section.`,
+          desc: `Komik VIP "${vipFallback.title}". Nikmati chapter terbaru di Advance section.`,
+          type: vipFallback.type || "Manhwa",
+          status: "Ongoing",
+          author: "ManhwaDesu",
+          genre: ["Adult", "Ecchi", "Romance", "Manhwa"],
+          chapters: dummyChapters,
+          chapter_list: dummyChapters,
+        };
+      }
+
+      throw new Error(`Detail komik "${cleanSlug}" tidak dapat dimuat.`);
+    }
+
+    const title =
+      html.match(/<h1 class="entry-title"[^>]*>([\s\S]*?)<\/h1>/i)?.[1]?.replace(/<[^>]+>/g, "")?.replace(/^Komik\s+/i, "")?.trim() ||
+      html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1]?.replace(/<[^>]+>/g, "")?.replace(/^Komik\s+/i, "")?.trim() ||
+      cleanSlug;
+
+    const image =
+      html.match(/<div class="thumb"[^>]*>[\s\S]*?<img [^>]*src="([^"]+)"/i)?.[1] ||
+      html.match(/class="ims"[\s\S]*?<img [^>]*src="([^"]+)"/i)?.[1] ||
+      html.match(/data-src="(https?:\/\/[^"]+)"/i)?.[1] ||
+      "";
+
+    const desc =
+      html.match(/<div class="entry-content entry-content-single"[^>]*>([\s\S]*?)<\/div>/i)?.[1]?.replace(/<[^>]+>/g, "")?.trim() ||
+      html.match(/<p class="desc"[^>]*>([\s\S]*?)<\/p>/i)?.[1]?.replace(/<[^>]+>/g, "")?.trim() ||
+      "Tidak ada deskripsi.";
+
+    const type =
+      html.match(/Type:<\/b>\s*<a[^>]*>(.*?)<\/a>/i)?.[1] ||
+      html.match(/Jenis Komik:<\/b>\s*(.*?)</i)?.[1] ||
+      "Manhwa";
+
     const status = html.match(/Status:<\/b>\s*(.*?)</i)?.[1]?.trim() || "Ongoing";
-    const author = html.match(/Author:<\/b>\s*(.*?)</i)?.[1]?.trim() || "-";
+    const author =
+      html.match(/Author:<\/b>\s*(.*?)</i)?.[1]?.trim() ||
+      html.match(/Penulis:<\/b>\s*(.*?)</i)?.[1]?.trim() ||
+      "-";
+
     const genre = [...html.matchAll(/rel="tag">(.*?)<\/a>/g)].map(m => m[1]);
 
-    // Extract chapter list using scoped container parser
+    const chapters: any[] = [];
+    const seen = new Set<string>();
+
+    // Pattern A: standard chapterlist container (komikindo & manhwadesu)
     const containerMatch =
       html.match(/id="chapter_list"[\s\S]*?<\/ul>/i) ||
       html.match(/id="chapterlist"[\s\S]*?<\/ul>/i) ||
       html.match(/class="clist"[\s\S]*?<\/ul>/i) ||
       html.match(/class="bxcl"[\s\S]*?<\/ul>/i) ||
-      html.match(/class="eclist"[\s\S]*?<\/ul>/i) ||
-      html.match(/<div [^>]*class="[^"]*lchx[^"]*"[\s\S]*?<\/div>/i);
+      html.match(/class="eclist"[\s\S]*?<\/ul>/i);
 
-    const chapterHtml = containerMatch ? containerMatch[0] : html;
-    const liMatches = [...chapterHtml.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)];
-    const chapters: any[] = [];
-    const seen = new Set<string>();
+    if (containerMatch) {
+      const liMatches = [...containerMatch[0].matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)];
+      for (const m of liMatches) {
+        const content = m[1];
+        const aMatch = content.match(/<a [^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
+        if (!aMatch) continue;
 
-    for (const m of liMatches) {
-      const content = m[1];
-      const aMatch = content.match(/<a [^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
-      if (!aMatch) continue;
+        const chUrl = aMatch[1];
+        if (chUrl.includes("bookmark") || chUrl.includes("facebook") || chUrl.includes("apk")) continue;
+        if (seen.has(chUrl)) continue;
+        seen.add(chUrl);
 
-      const chUrl = aMatch[1];
+        const chapternumMatch = content.match(/class="chapternum">([\s\S]*?)<\/span>/i);
+        const titleText = chapternumMatch
+          ? chapternumMatch[1].replace(/<[^>]+>/g, "").trim()
+          : aMatch[2].replace(/<[^>]+>/g, "").trim();
 
-      // Exclude non-chapter URLs (downloads, social links, apps, bookmarks)
-      if (
-        chUrl.includes("safe.komik.one") ||
-        chUrl.includes("pdf.gilakomik") ||
-        chUrl.includes("bookmark") ||
-        chUrl.includes("facebook") ||
-        chUrl.includes("apk")
-      ) {
-        continue;
+        const dtMatch = content.match(/<span class="(?:dt|chapterdate)">([\s\S]*?)<\/span>/i);
+        const releaseDate = dtMatch ? dtMatch[1].replace(/<[^>]+>/g, "").trim() : "";
+
+        const numMatch =
+          chUrl.match(/chapter[^\d]*(\d+(?:\.\d+)?)/i) ||
+          chUrl.match(/ch[^\d]*(\d+(?:\.\d+)?)/i) ||
+          titleText.match(/(\d+(?:\.\d+)?)/);
+
+        const num = numMatch ? numMatch[1] : titleText.replace(/^[^\d]*/, "") || "1";
+        const endpoint = chUrl.replace(/^https?:\/\/[^\/]+/, "").replace(/^\//, "").replace(/\/$/, "");
+
+        chapters.push({
+          title: titleText.startsWith("Chapter") ? titleText : `Chapter ${num}`,
+          name: titleText.startsWith("Chapter") ? titleText : `Chapter ${num}`,
+          chapter_number: num,
+          number: num,
+          endpoint: endpoint || num,
+          url: chUrl,
+          release_date: releaseDate,
+          date: releaseDate,
+        });
       }
+    }
 
-      if (
-        !/\/(?:[^\/]*-(?:chapter|ch)-\d+|chapter-\d+|ch-\d+|[^\/]*chapter[^\/]*)\/?$/i.test(chUrl) &&
-        !chUrl.includes("-chapter-") &&
-        !chUrl.includes("/chapter-")
-      ) {
-        continue;
+    // Pattern B: komiku.id table format (<td class="judulseries">)
+    if (chapters.length === 0) {
+      const tdMatches = [...html.matchAll(/<td class="judulseries">[\s\S]*?<a [^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)];
+      for (const m of tdMatches) {
+        const chUrl = m[1];
+        if (seen.has(chUrl)) continue;
+        seen.add(chUrl);
+
+        const titleText = m[2].replace(/<[^>]+>/g, "").trim();
+        const numMatch = chUrl.match(/chapter-(\d+(?:\.\d+)?)/i) || titleText.match(/(\d+(?:\.\d+)?)/);
+        const num = numMatch ? numMatch[1] : "1";
+        const fullUrl = chUrl.startsWith("http") ? chUrl : `https://komiku.id${chUrl}`;
+        const endpoint = chUrl.replace(/^\//, "").replace(/\/$/, "");
+
+        chapters.push({
+          title: titleText.startsWith("Chapter") ? titleText : `Chapter ${num}`,
+          name: titleText.startsWith("Chapter") ? titleText : `Chapter ${num}`,
+          chapter_number: num,
+          number: num,
+          endpoint: endpoint || num,
+          url: fullUrl,
+          release_date: "",
+          date: "",
+        });
       }
-
-      if (seen.has(chUrl)) continue;
-      seen.add(chUrl);
-
-      const chapternumMatch = content.match(/class="chapternum">([\s\S]*?)<\/span>/i);
-      const titleText = chapternumMatch
-        ? chapternumMatch[1].replace(/<[^>]+>/g, "").trim()
-        : aMatch[2].replace(/<[^>]+>/g, "").trim();
-
-      const dtMatch = content.match(/<span class="(?:dt|chapterdate)">([\s\S]*?)<\/span>/i);
-      const releaseDate = dtMatch ? dtMatch[1].replace(/<[^>]+>/g, "").trim() : "";
-
-      const numMatch =
-        chUrl.match(/chapter[^\d]*(\d+(?:\.\d+)?)/i) ||
-        chUrl.match(/ch[^\d]*(\d+(?:\.\d+)?)/i) ||
-        titleText.match(/chapter[^\d]*(\d+(?:\.\d+)?)/i) ||
-        titleText.match(/ch[^\d]*(\d+(?:\.\d+)?)/i);
-
-      const num = numMatch ? numMatch[1] : titleText.replace(/^[^\d]*/, "") || "1";
-
-      chapters.push({
-        title: titleText.startsWith("Chapter") ? titleText : `Chapter ${num}`,
-        name: titleText.startsWith("Chapter") ? titleText : `Chapter ${num}`,
-        chapter_number: num,
-        number: num,
-        endpoint: chUrl.split("/").filter(Boolean).pop() || num,
-        url: chUrl,
-        release_date: releaseDate,
-        date: releaseDate
-      });
     }
 
     return {
@@ -641,7 +715,7 @@ export const komiku = {
       author,
       genre,
       chapters,
-      chapter_list: chapters
+      chapter_list: chapters,
     };
   },
 
@@ -677,12 +751,20 @@ export const komiku = {
       try {
         html = await fetchHtml(chUrl);
       } catch (err2) {
-        // Fallback to manhwadesu.wiki chapter if main server fails
+        // Fallback 1: komiku.id chapter
         try {
-          const mdChUrl = `https://manhwadesu.wiki/${cleanSlug}-chapter-${cleanNumber}/`;
-          html = await fetchHtml(mdChUrl);
+          const komikuChUrl = cleanNumber.includes("chapter")
+            ? `https://komiku.id/${cleanNumber}/`
+            : `https://komiku.id/${cleanSlug}-chapter-${cleanNumber}/`;
+          html = await fetchHtml(komikuChUrl);
         } catch (err3) {
-          throw new Error(`Chapter ${cleanNumber} tidak ditemukan.`);
+          // Fallback 2: manhwadesu.wiki chapter
+          try {
+            const mdChUrl = `https://manhwadesu.wiki/${cleanSlug}-chapter-${cleanNumber}/`;
+            html = await fetchHtml(mdChUrl);
+          } catch (err4) {
+            throw new Error(`Chapter ${cleanNumber} tidak ditemukan.`);
+          }
         }
       }
     }
