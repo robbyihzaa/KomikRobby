@@ -157,36 +157,43 @@ export function parseCardsFromHtml(html: string) {
 }
 
 /**
- * Parse comic cards from komiku.id — uses <article class="manga-card"> structure.
- * komiku.id is cloud-friendly (no Cloudflare Geo-IP block).
+/**
+ * Parse comic cards from komiku.id.
+ * komiku.id is cloud-friendly (no Cloudflare Geo-IP block on serverless deployments).
  */
 export function parseKomikuCards(html: string) {
   const items: any[] = [];
   const seen = new Set<string>();
 
-  const blocks = [...html.matchAll(/<article class="manga-card">([\s\S]*?)<\/article>/gi)];
-  for (const m of blocks) {
-    const block = m[1];
+  const articleRegex = /<(?:article|div)[^>]*class="[^"]*(?:ls4|ls2|bge|manga-card|kan|bge2)[^"]*"[\s\S]*?<\/(?:article|div)>/gi;
+  const blocks = [...html.matchAll(articleRegex)];
 
-    const linkMatch = block.match(/href="\/(?:manga|komik)\/([^"\/]+)\/?"/i);
+  for (const m of blocks) {
+    const block = m[0];
+
+    const linkMatch = block.match(/href="(?:\/|https?:\/\/komiku\.id\/)?(?:manga|komik)\/([^"\/]+)\/?"/i);
     if (!linkMatch) continue;
     const slug = linkMatch[1];
-    if (!slug || seen.has(slug)) continue;
-    seen.add(slug);
+    if (!slug || seen.has(slug) || slug === "page" || slug === "daftar-komik") continue;
 
     const titleMatch = block.match(/<h4[^>]*>[^<]*<a[^>]*>\s*([^<]+)/i)
-      || block.match(/alt="\s*([^"]+)"/i);
+      || block.match(/alt="([^"]+)"/i)
+      || block.match(/title="([^"]+)"/i);
     const title = titleMatch ? titleMatch[1].replace(/^Baca\s+(Komik\s+)?/i, "").trim() : slug;
 
-    const imgMatch = block.match(/data-src="(https?:\/\/[^"]+)"/i)
+    const imgMatch = block.match(/data-src="([^"]+)"/i)
       || block.match(/src="(https?:\/\/[^"]+\.(?:jpg|webp|png)[^"]*)"/i);
     const image = imgMatch ? imgMatch[1] : "";
 
-    const chMatch = block.match(/Chapter\s*([\d.]+)/i);
+    const chMatch = block.match(/Chapter\s*([\d.]+)/i)
+      || block.match(/Ch\.\s*([\d.]+)/i);
     const latestChapter = chMatch ? `Ch. ${chMatch[1]}` : "";
 
-    const typeVal = /manhwa/i.test(block) ? "Manhwa" : /manhua/i.test(block) ? "Manhua" : "Manga";
+    let typeVal = "Manga";
+    if (/manhwa/i.test(block) || /manhwa/i.test(slug)) typeVal = "Manhwa";
+    else if (/manhua/i.test(block) || /manhua/i.test(slug)) typeVal = "Manhua";
 
+    seen.add(slug);
     items.push({
       title,
       slug,
@@ -199,6 +206,35 @@ export function parseKomikuCards(html: string) {
       source: "komiku",
     });
   }
+
+  // Direct anchor fallback
+  if (items.length === 0) {
+    const linkMatches = [...html.matchAll(/<a[^>]+href="(?:\/|https?:\/\/komiku\.id\/)?manga\/([^"\/]+)\/?"[^>]*>([\s\S]*?)<\/a>/gi)];
+    for (const m of linkMatches) {
+      const slug = m[1];
+      if (!slug || seen.has(slug) || slug === "page" || slug === "daftar-komik") continue;
+
+      const imgMatch = m[0].match(/data-src="([^"]+)"/i) || m[0].match(/src="([^"]+)"/i);
+      const titleMatch = m[0].match(/alt="([^"]+)"/i) || m[2].replace(/<[^>]+>/g, '').trim();
+      const title = typeof titleMatch === "string" ? titleMatch.replace(/^Baca\s+(Komik\s+)?/i, "").trim() : slug;
+
+      if (title && title.length > 1) {
+        seen.add(slug);
+        items.push({
+          title,
+          slug,
+          image: imgMatch ? imgMatch[1] : "",
+          thumbnail: imgMatch ? imgMatch[1] : "",
+          type: /manhwa/i.test(slug) ? "Manhwa" : "Manga",
+          updateDate: "",
+          latestChapter: "",
+          endpoint: `/detail-komik/${slug}`,
+          source: "komiku",
+        });
+      }
+    }
+  }
+
   return items;
 }
 
@@ -256,7 +292,13 @@ export const komiku = {
       const items = parseCardsFromHtml(html);
       if (items.length > 0) return items;
     } catch (e) {}
-    // Stage 3: komiku.id popular ranking (cloud-friendly fallback)
+    // Stage 3: komiku.id popular Manhwa (cloud-friendly fallback)
+    try {
+      const html = await fetchHtml(`https://komiku.id/daftar-komik/?tipe=manhwa&orderby=meta_value_num`);
+      const items = parseKomikuCards(html);
+      if (items.length > 0) return items;
+    } catch (e) {}
+    // Stage 4: komiku.id general popular fallback
     try {
       const html = await fetchHtml(`https://komiku.id/`);
       const items = parseKomikuCards(html);
@@ -265,10 +307,6 @@ export const komiku = {
     return [];
   },
 
-
-
-
-
   filter: async (params: {
     genre?: string;
     type?: string;
@@ -276,15 +314,14 @@ export const komiku = {
     orderby?: string;
     page?: number;
   } = {}) => {
+    // Stage 1: komikindo.ch primary
     try {
       const qs = new URLSearchParams();
 
-      // 1. Genre: in komikindo it is genre[]=slug
       if (params.genre) {
         qs.set("genre[]", params.genre.toLowerCase());
       }
 
-      // 2. Type: Manga / Manhwa / Manhua (capitalized)
       if (params.type) {
         const t = params.type.toLowerCase();
         if (t.includes("manhua")) qs.set("type", "Manhua");
@@ -292,14 +329,12 @@ export const komiku = {
         else if (t.includes("manga")) qs.set("type", "Manga");
       }
 
-      // 3. Status: Ongoing / Completed (capitalized)
       if (params.status) {
         const s = params.status.toLowerCase();
         if (s === "ongoing") qs.set("status", "Ongoing");
         else if (s === "completed" || s === "end") qs.set("status", "Completed");
       }
 
-      // 4. Order: order=popular, update, latest, title, titlereverse
       if (params.orderby) {
         const o = params.orderby.toLowerCase();
         if (o === "popular") qs.set("order", "popular");
@@ -314,12 +349,38 @@ export const komiku = {
       const queryString = qs.toString();
       const url = queryString ? `${base}?${queryString}` : base;
       const html = await fetchHtml(url);
-      return parseCardsFromHtml(html);
+      const items = parseCardsFromHtml(html);
+      if (items.length > 0) return items;
     } catch (err) {
-      console.error("komiku.filter error:", err);
-      return [];
+      console.error("komiku.filter primary error:", err);
     }
+
+    // Stage 2: komiku.id fallback (100% cloud-friendly, no Cloudflare block)
+    try {
+      const qs2 = new URLSearchParams();
+      if (params.type) qs2.set("tipe", params.type.toLowerCase());
+      if (params.orderby === "popular" || !params.orderby) qs2.set("orderby", "meta_value_num");
+      else if (params.orderby === "update") qs2.set("orderby", "date");
+      if (params.status) qs2.set("status", params.status);
+      if (params.genre) qs2.set("genre", params.genre.toLowerCase());
+      if (params.page && params.page > 1) qs2.set("page", params.page.toString());
+
+      const url2 = `https://komiku.id/daftar-komik/?${qs2.toString()}`;
+      const html2 = await fetchHtml(url2);
+      const items2 = parseKomikuCards(html2);
+      if (items2.length > 0) return items2;
+    } catch (err2) {
+      console.error("komiku.filter fallback error:", err2);
+    }
+
+    return [];
   },
+
+
+
+
+
+
 
   library: async (page = 1) => komiku.latest(page),
   colored: async (page = 1) => komiku.latest(page),
@@ -328,13 +389,23 @@ export const komiku = {
 
   search: async (q: string) => {
     if (!q) return [];
+    // Stage 1: komikindo.ch primary
     try {
       const url = `${BASE}/?s=${encodeURIComponent(q)}`;
       const html = await fetchHtml(url);
       const items = parseCardsFromHtml(html);
       if (items.length > 0) return items;
     } catch (err) {
-      console.error("komiku.search error:", err);
+      console.error("komiku.search primary error:", err);
+    }
+    // Stage 2: komiku.id fallback (100% cloud-friendly, no Cloudflare block)
+    try {
+      const url2 = `https://komiku.id/daftar-komik/?s=${encodeURIComponent(q)}`;
+      const html2 = await fetchHtml(url2);
+      const items2 = parseKomikuCards(html2);
+      if (items2.length > 0) return items2;
+    } catch (err2) {
+      console.error("komiku.search fallback error:", err2);
     }
     return [];
   },
