@@ -35,7 +35,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ p
           <p>Manhwa · Manga · Manhua — Terbaru &amp; Terpopuler</p>
 
           {/* Quick filter shortcut pills */}
-          <div className="filter-chips" style={{ justifyContent: "center", marginTop: 18 }}>
+          <div className="filter-chips filter-chips-home">
             <Link href="/browse?type=manhwa" className="filter-chip">
               🇰🇷 Manhwa
             </Link>

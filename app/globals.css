@@ -1807,26 +1807,76 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   .navbar-links { display: none; }
   .btn-search-icon { display: flex; }
   .bottom-nav { display: flex; }
+  
   .page-with-nav {
-    padding-top: calc(var(--nav-height) + 12px);
-    padding-bottom: calc(var(--bottom-nav-height) + 24px);
+    padding-top: calc(var(--nav-height) + 28px);
+    padding-bottom: calc(var(--bottom-nav-height) + 28px);
   }
 
   .container {
-    padding: 0 14px;
+    padding: 0 12px;
   }
 
   .hero {
-    padding: 24px 0 16px;
+    padding: 12px 0 16px;
+    margin-top: 8px;
   }
 
   .hero h1 {
-    font-size: 28px;
+    font-size: 26px;
     letter-spacing: -0.8px;
+    line-height: 1.2;
   }
 
   .hero p {
-    font-size: 14px;
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  /* Swipeable horizontal filter chips on mobile */
+  .filter-chips {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    padding: 4px 4px 10px 4px !important;
+    margin-top: 14px !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .filter-chips::-webkit-scrollbar {
+    display: none;
+  }
+  .filter-chips-home {
+    justify-content: flex-start !important;
+    margin-top: 10px !important;
+  }
+
+  .filter-chip {
+    flex-shrink: 0;
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+
+  /* Bottom Nav Item styling for mobile */
+  .bottom-nav-item {
+    padding: 5px 2px;
+    min-width: 0;
+  }
+
+  .bottom-nav-label {
+    font-size: 9.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    text-align: center;
+  }
+
+  .bottom-nav-icon {
+    font-size: 18px;
+    line-height: 1;
   }
 
   .detail {
@@ -1839,7 +1889,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   }
 
   .grid {
-    grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 10px;
   }
 
@@ -1849,6 +1899,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 
   .card-title {
     font-size: 12px;
+    height: 2.7em;
+    line-height: 1.35;
   }
 
   .card-chapter {

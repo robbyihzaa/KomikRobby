@@ -5,18 +5,17 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 
 const navLinks = [
-  { href: "/", label: "Home", icon: "🏠" },
-  { href: "/search", label: "Cari & Filter", icon: "🔍" },
-  { href: "/advance", label: "Advance", icon: "👑" },
-  { href: "/bookmark", label: "Bookmark", icon: "🔖" },
-  { href: "/history", label: "History", icon: "🕓" },
-  { href: "/account", label: "Akun", icon: "👤" },
+  { href: "/", label: "Home", mobileLabel: "Home", icon: "🏠" },
+  { href: "/search", label: "Cari & Filter", mobileLabel: "Cari", icon: "🔍" },
+  { href: "/advance", label: "Advance", mobileLabel: "Advance", icon: "👑" },
+  { href: "/bookmark", label: "Bookmark", mobileLabel: "Bookmark", icon: "🔖" },
+  { href: "/history", label: "History", mobileLabel: "Riwayat", icon: "🕓" },
+  { href: "/account", label: "Akun", mobileLabel: "Akun", icon: "👤" },
 ];
 
 export default function Navbar() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -64,7 +63,7 @@ export default function Navbar() {
             className={`bottom-nav-item ${pathname === l.href ? "bottom-nav-active" : ""}`}
           >
             <span className="bottom-nav-icon">{l.icon}</span>
-            <span className="bottom-nav-label">{l.label}</span>
+            <span className="bottom-nav-label">{l.mobileLabel || l.label}</span>
           </Link>
         ))}
       </nav>
