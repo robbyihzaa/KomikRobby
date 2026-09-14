@@ -213,7 +213,22 @@ export function parseManhwaDesuCards(html: string) {
   const items: any[] = [];
   const seen = new Set<string>();
 
-  // 1. Try parsing <div class="utao"> (latest project updates with exact update time)
+  const extractImage = (block: string): string => {
+    const imgMatch =
+      block.match(/data-wpfc-original-src="([^"]+)"/i) ||
+      block.match(/data-src="([^"]+)"/i) ||
+      block.match(/data-lazy-src="([^"]+)"/i) ||
+      block.match(/src="([^"]+\.(?:jpg|webp|png|jpeg)[^"]*)"/i) ||
+      block.match(/src="([^"]+)"/i);
+
+    let img = imgMatch ? imgMatch[1] : "";
+    if (img.includes("data:image")) img = "";
+    if (img.startsWith("//")) img = "https:" + img;
+    else if (img.startsWith("/")) img = "https://manhwadesu.org" + img;
+    return img;
+  };
+
+  // 1. Try parsing <div class="utao"> (latest project updates)
   const utaoMatches = [...html.matchAll(/<div class="utao">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/gi)];
   for (const m of utaoMatches) {
     const block = m[1];
@@ -225,13 +240,7 @@ export function parseManhwaDesuCards(html: string) {
     if (!slug || seen.has(slug)) continue;
 
     const title = linkMatch[2] ? linkMatch[2].replace(/^Komik\s+/i, "").trim() : slug;
-
-    const imgMatch = block.match(/data-wpfc-original-src="([^"]+)"/i) ||
-                     block.match(/data-src="([^"]+)"/i) ||
-                     block.match(/data-lazy-src="([^"]+)"/i) ||
-                     block.match(/src="(https?:[^"]+)"/i);
-    let image = imgMatch ? imgMatch[1] : "";
-    if (image.includes("data:image")) image = "";
+    const image = extractImage(block);
 
     const chMatch = block.match(/<a [^>]*>\s*(Ch\.\s*[\d.]+)\s*<\/a>\s*<span>([\s\S]*?)<\/span>/i) ||
                     block.match(/<a [^>]*>\s*(Chapter\s*[\d.]+)\s*<\/a>\s*<span>([\s\S]*?)<\/span>/i);
@@ -251,13 +260,13 @@ export function parseManhwaDesuCards(html: string) {
       updateDate,
       latestChapter,
       endpoint: `/detail-komik/${slug}`,
-      isVip: true,
+      isVip: false,
       source: "manhwadesu",
     });
   }
 
-  // 2. Parse <div class="bs"> (grid cards)
-  const bsMatches = [...html.matchAll(/<div class="bs">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/gi)];
+  // 2. Parse <div class="bs"> or <article class="bs"> (grid cards)
+  const bsMatches = [...html.matchAll(/<(?:div|article) class="bs">([\s\S]*?)<\/(?:div|article)>/gi)];
   for (const m of bsMatches) {
     const block = m[1];
     const linkMatch = block.match(/href="[^"]*\/komik\/([^"\/]+)\/?"[^>]*title="([^"]+)"/i) ||
@@ -268,13 +277,7 @@ export function parseManhwaDesuCards(html: string) {
     if (!slug || seen.has(slug)) continue;
 
     const title = linkMatch[2] ? linkMatch[2].replace(/^Komik\s+/i, "").trim() : slug;
-
-    const imgMatch = block.match(/data-wpfc-original-src="([^"]+)"/i) ||
-                     block.match(/data-src="([^"]+)"/i) ||
-                     block.match(/data-lazy-src="([^"]+)"/i) ||
-                     block.match(/src="(https?:[^"]+)"/i);
-    let image = imgMatch ? imgMatch[1] : "";
-    if (image.includes("data:image")) image = "";
+    const image = extractImage(block);
 
     const chMatch = block.match(/class="epxs">([\s\S]*?)<\/div>/i);
     const latestChapter = chMatch ? chMatch[1].replace(/<[^>]+>/g, "").trim() : "";
@@ -290,9 +293,9 @@ export function parseManhwaDesuCards(html: string) {
       thumbnail: image,
       type: type.toLowerCase().includes("manhua") ? "Manhua" : type.toLowerCase().includes("manga") ? "Manga" : "Manhwa",
       updateDate: "",
-      latestChapter: latestChapter ? (latestChapter.startsWith("Ch") ? latestChapter : `Ch. ${latestChapter.replace(/^Chapter\s*/i, "")}`) : "",
+      latestChapter,
       endpoint: `/detail-komik/${slug}`,
-      isVip: true,
+      isVip: false,
       source: "manhwadesu",
     });
   }
@@ -456,7 +459,7 @@ export const komiku = {
       const items = parseManhwaDesuCards(html);
       if (items.length > 0) return items;
     } catch (err) {
-      console.error("manhwadesu.org fetch failed, trying wiki:", err);
+      console.error("manhwadesu.org fetch failed:", err);
     }
 
     // Stage 2: Try manhwadesu.wiki fallback
@@ -467,7 +470,17 @@ export const komiku = {
       if (items.length > 0) return items;
     } catch (err) {}
 
-    // Stage 3: Return curated fallback VIP items for 100% cloud resilience
+    // Stage 3: Try komikindo Manhwa section
+    try {
+      const url = page === 1
+        ? `${BASE}/manga/?type=Manhwa&order=update`
+        : `${BASE}/manga/page/${page}/?type=Manhwa&order=update`;
+      const html = await fetchHtml(url);
+      const items = parseCardsFromHtml(html);
+      if (items.length > 0) return items;
+    } catch (e) {}
+
+    // Stage 4: Return curated fallback VIP items for 100% cloud resilience
     return FALLBACK_VIP_ITEMS;
   },
 

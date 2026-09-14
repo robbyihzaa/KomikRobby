@@ -14,15 +14,15 @@ interface MangaCardProps {
   isLoggedIn?: boolean;
 }
 
-export default function MangaCard({ item, rank, isLoggedIn = false }: MangaCardProps) {
+export default function MangaCard({ item, rank, isLoggedIn = true }: MangaCardProps) {
   const slug = item.slug || item.endpoint?.split("/").filter(Boolean).pop() || "";
   const typeInfo = getComicFlag(item.type);
   const meta = { slug, title: item.title || slug, image: item.image || item.thumbnail, type: item.type };
   const isVip = Boolean(item.isVip);
-  const isLocked = isVip && !isLoggedIn;
+  const isLocked = false; // All content open like home page
 
   return (
-    <div className={`card${isVip ? " card-vip" : ""}${isLocked ? " card-locked" : ""}`}>
+    <div className={`card${isVip ? " card-vip" : ""}`}>
       {/* VIP label badge — always visible */}
       {isVip && (
         <div className="vip-label-badge">
